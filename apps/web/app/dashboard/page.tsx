@@ -112,6 +112,20 @@ export default async function DashboardPage() {
             </div>
             <span className="ml-auto text-muted-foreground">→</span>
           </a>
+
+          <a
+            href="/dashboard/documents"
+            className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+          >
+            <span className="text-2xl">📁</span>
+            <div>
+              <p className="font-medium text-sm">Dokumen Saya</p>
+              <p className="text-xs text-muted-foreground">
+                Upload proposal, skripsi, laporan KP, atau template
+              </p>
+            </div>
+            <span className="ml-auto text-muted-foreground">→</span>
+          </a>
         </div>
 
         {/* Recent Sessions */}
