@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
-interface Message {
+type ChatMessage = {
   role: 'user' | 'assistant'
   content: string
 }
+
+const DEFAULT_PROPOSAL_MESSAGE = `Halo! Saya EduResearch AI, mentor riset kamu. Mari kita mulai dengan mengeksplorasi topik penelitianmu.
+
+Ceritakan dulu — bidang apa yang paling menarik perhatianmu belakangan ini?
+Tidak perlu langsung spesifik, cukup ceritakan minat atau keresahanmu.`
 
 const STEPS = [
   { id: 'eksplorasi_topik',    label: 'Eksplorasi Topik' },
@@ -17,51 +23,78 @@ const STEPS = [
 ]
 
 export default function ProposalPage() {
-  const [messages, setMessages] = useState<Message[]>([])
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('session_id')
+  const supabase = useMemo(() => createClient(), [])
+
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingSession, setLoadingSession] = useState(true)
   const [currentStep, setCurrentStep] = useState(0)
-  const [sessionId, setSessionId] = useState<string | null>(null)
   const [streaming, setStreaming] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
 
-  // Buat session & kirim pesan pembuka saat pertama load
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    let isMounted = true
 
-      // Buat session baru
-      const { data: session } = await supabase
-        .from('sessions')
-        .insert({
-          user_id: user.id,
-          modul: 'proposal',
-          status: 'active'
-        })
-        .select()
-        .single()
-
-      if (session) {
-        setSessionId(session.id)
-
-        // Simpan pesan pembuka ke DB
-        await supabase.from('messages').insert({
-          session_id: session.id,
-          role: 'assistant',
-          content: 'Halo! Saya EduResearch AI, mentor riset kamu. Mari kita mulai dengan mengeksplorasi topik penelitianmu. \n\nCeritakan dulu — bidang apa yang paling menarik perhatianmu belakangan ini? Tidak perlu langsung spesifik, cukup ceritakan minat atau keresahanmu.',
-          model_used: 'system'
-        })
+    async function loadSessionMessages() {
+      if (!sessionId) {
+        setMessages([
+          {
+            role: 'assistant',
+            content: DEFAULT_PROPOSAL_MESSAGE,
+          },
+        ])
+        setLoadingSession(false)
+        return
       }
 
-      // Set pesan pembuka di UI
-      setMessages([{
-        role: 'assistant',
-        content: 'Halo! Saya EduResearch AI, mentor riset kamu. Mari kita mulai dengan mengeksplorasi topik penelitianmu. \n\nCeritakan dulu — bidang apa yang paling menarik perhatianmu belakangan ini? Tidak perlu langsung spesifik, cukup ceritakan minat atau keresahanmu.'
-      }])
-    })()
-  }, [supabase])
+      const { data, error } = await supabase
+        .from('messages')
+        .select('role, content, created_at')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+
+      if (!isMounted) return
+
+      if (error) {
+        console.error('Gagal mengambil messages:', error.message)
+        setMessages([
+          {
+            role: 'assistant',
+            content: DEFAULT_PROPOSAL_MESSAGE,
+          },
+        ])
+        setLoadingSession(false)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setMessages(
+          data.map((message) => ({
+            role: message.role as 'user' | 'assistant',
+            content: message.content,
+          }))
+        )
+      } else {
+        setMessages([
+          {
+            role: 'assistant',
+            content: DEFAULT_PROPOSAL_MESSAGE,
+          },
+        ])
+      }
+
+      setLoadingSession(false)
+    }
+
+    loadSessionMessages()
+
+    return () => {
+      isMounted = false
+    }
+  }, [sessionId, supabase])
 
   // Auto scroll ke bawah
   useEffect(() => {
@@ -147,6 +180,14 @@ export default function ProposalPage() {
     }
 
     setLoading(false)
+  }
+
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Memuat sesi bimbingan...</p>
+      </div>
+    )
   }
 
   return (

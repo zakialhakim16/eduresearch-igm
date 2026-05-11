@@ -46,6 +46,7 @@ export default function DocumentsPage() {
   const [uploading, setUploading] = useState(false)
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [summarizingId, setSummarizingId] = useState<string | null>(null)
+  const [startingSessionId, setStartingSessionId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -279,6 +280,32 @@ export default function DocumentsPage() {
     setSummarizingId(null)
   }
 
+  async function handleStartGuidance(documentId: string) {
+    setStartingSessionId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/sessions/from-document', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal memulai sesi bimbingan')
+      setStartingSessionId(null)
+      return
+    }
+
+    window.location.href = result.redirect_url
+  }
+
   function formatFileSize(size: number | null) {
     if (!size) return '-'
 
@@ -451,6 +478,18 @@ export default function DocumentsPage() {
                         className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
                       >
                         {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
+                      </button>
+
+                      <button
+                        onClick={() => handleStartGuidance(doc.id)}
+                        disabled={
+                          startingSessionId === doc.id ||
+                          doc.status !== 'parsed' ||
+                          !doc.ai_summary
+                        }
+                        className="text-sm px-3 py-2 bg-foreground text-background rounded-lg hover:opacity-90 disabled:opacity-50"
+                      >
+                        {startingSessionId === doc.id ? 'Memulai...' : 'Mulai Bimbingan'}
                       </button>
                     </div>
                   </div>
