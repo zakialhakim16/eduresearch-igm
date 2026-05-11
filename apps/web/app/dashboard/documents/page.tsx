@@ -34,6 +34,7 @@ export default function DocumentsPage() {
   const [jenis, setJenis] = useState('proposal')
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -197,6 +198,41 @@ export default function DocumentsPage() {
     setUploading(false)
   }
 
+  async function handleAnalyze(documentId: string) {
+    if (!userId) {
+      setError('User tidak ditemukan')
+      return
+    }
+
+    setAnalyzingId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal menganalisis dokumen')
+      setAnalyzingId(null)
+      return
+    }
+
+    setSuccess('Dokumen berhasil dianalisis oleh Rust parser.')
+
+    await fetchDocuments(userId)
+
+    setAnalyzingId(null)
+  }
+
   function formatFileSize(size: number | null) {
     if (!size) return '-'
 
@@ -349,10 +385,11 @@ export default function DocumentsPage() {
                     </span>
 
                     <button
-                      disabled
-                      className="text-sm px-3 py-2 border rounded-lg text-muted-foreground cursor-not-allowed"
+                      onClick={() => handleAnalyze(doc.id)}
+                      disabled={analyzingId === doc.id}
+                      className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                     >
-                      Analisis segera
+                      {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis sekarang'}
                     </button>
                   </div>
                 </div>
