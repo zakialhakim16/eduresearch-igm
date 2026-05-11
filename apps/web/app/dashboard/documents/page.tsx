@@ -4,6 +4,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
+type RecommendedReference = {
+  openalex_id: string
+  title: string
+  year: number | null
+  doi: string | null
+  authors: string[]
+  journal: string | null
+  cited_by_count: number
+  url: string | null
+  abstract: string
+  is_open_access: boolean
+}
+
 type DocumentStructure = {
   detected_type?: string
   word_count?: number
@@ -50,6 +63,11 @@ export default function DocumentsPage() {
   const [summarizingId, setSummarizingId] = useState<string | null>(null)
   const [startingSessionId, setStartingSessionId] = useState<string | null>(null)
   const [extractingKeywordsId, setExtractingKeywordsId] = useState<string | null>(null)
+  const [findingReferencesId, setFindingReferencesId] = useState<string | null>(null)
+  const [recommendedReferences, setRecommendedReferences] = useState<
+    Record<string, RecommendedReference[]>
+  >({})
+  const [savingReferenceId, setSavingReferenceId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -344,6 +362,84 @@ export default function DocumentsPage() {
     setExtractingKeywordsId(null)
   }
 
+  async function handleFindReferences(documentId: string) {
+    setFindingReferencesId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/recommend-references', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal mencari referensi')
+      setFindingReferencesId(null)
+      return
+    }
+
+    const references = result.references ?? []
+
+    setRecommendedReferences((prev) => ({
+      ...prev,
+      [documentId]: references,
+    }))
+
+    if (references.length === 0) {
+      setError(
+        `OpenAlex belum menemukan referensi yang cocok. Query yang dicoba: ${
+          result.tried_queries?.join(', ') ?? '-'
+        }`
+      )
+    } else {
+      setSuccess(
+        `Rekomendasi referensi berhasil ditemukan: ${references.length} paper. Query: ${result.query}`
+      )
+    }
+
+    setFindingReferencesId(null)
+  }
+
+  async function handleSaveReference(
+    documentId: string,
+    reference: RecommendedReference
+  ) {
+    const saveKey = `${documentId}-${reference.openalex_id}`
+
+    setSavingReferenceId(saveKey)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/references/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        reference,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal menyimpan referensi')
+      setSavingReferenceId(null)
+      return
+    }
+
+    setSuccess('Referensi berhasil disimpan ke library.')
+    setSavingReferenceId(null)
+  }
+
   function formatFileSize(size: number | null) {
     if (!size) return '-'
 
@@ -531,6 +627,17 @@ export default function DocumentsPage() {
                       </button>
 
                       <button
+                        onClick={() => handleFindReferences(doc.id)}
+                        disabled={
+                          findingReferencesId === doc.id ||
+                          !doc.research_query
+                        }
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                      >
+                        {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
+                      </button>
+
+                      <button
                         onClick={() => handleStartGuidance(doc.id)}
                         disabled={
                           startingSessionId === doc.id ||
@@ -625,6 +732,79 @@ export default function DocumentsPage() {
                               <p className="text-sm text-muted-foreground mt-1">
                                 {doc.research_query}
                               </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {recommendedReferences[doc.id] && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div>
+                            <p className="text-sm font-medium">Rekomendasi Referensi:</p>
+                            <p className="text-xs text-muted-foreground">
+                              Berdasarkan keyword dan query dari dokumen ini.
+                            </p>
+                          </div>
+
+                          {recommendedReferences[doc.id].length === 0 ? (
+                            <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                              Belum ada referensi yang cocok dari OpenAlex untuk query ini.
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {recommendedReferences[doc.id].map((ref) => (
+                                <div
+                                  key={ref.openalex_id}
+                                  className="rounded-lg border bg-background p-4 space-y-2"
+                                >
+                                  <div className="space-y-1">
+                                    <p className="font-medium text-sm leading-relaxed">
+                                      {ref.title}
+                                    </p>
+
+                                    <p className="text-xs text-muted-foreground">
+                                      {ref.authors.length > 0
+                                        ? ref.authors.join(', ')
+                                        : 'Author tidak tersedia'}
+                                      {ref.year ? ` · ${ref.year}` : ''}
+                                    </p>
+
+                                    <p className="text-xs text-muted-foreground">
+                                      {ref.journal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
+                                      {ref.cited_by_count}
+                                    </p>
+                                  </div>
+
+                                  {ref.abstract && (
+                                    <p className="text-sm text-muted-foreground line-clamp-3">
+                                      {ref.abstract}
+                                    </p>
+                                  )}
+
+                                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                                    {ref.url && (
+                                      <a
+                                        href={ref.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-sm text-primary hover:underline"
+                                      >
+                                        Buka referensi →
+                                      </a>
+                                    )}
+
+                                    <button
+                                      onClick={() => handleSaveReference(doc.id, ref)}
+                                      disabled={savingReferenceId === `${doc.id}-${ref.openalex_id}`}
+                                      className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                    >
+                                      {savingReferenceId === `${doc.id}-${ref.openalex_id}`
+                                        ? 'Menyimpan...'
+                                        : 'Simpan Referensi'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
