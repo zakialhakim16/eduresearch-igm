@@ -35,6 +35,17 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(5)
 
+  const uniqueRecentSessions = recentSessions
+    ? recentSessions.filter((session, index, self) => {
+        if (!session.document_id) return false
+
+        return (
+          index ===
+          self.findIndex((item) => item.document_id === session.document_id)
+        )
+      })
+    : []
+
   function formatDate(date: string) {
     return new Date(date).toLocaleDateString('id-ID', {
       day: '2-digit',
@@ -164,13 +175,13 @@ export default async function DashboardPage() {
         <div className="space-y-4">
           <h3 className="font-semibold">Sesi Terakhir</h3>
 
-          {!recentSessions || recentSessions.length === 0 ? (
+          {uniqueRecentSessions.length === 0 ? (
             <div className="border rounded-xl p-6 text-center text-muted-foreground text-sm">
               Belum ada sesi. Mulai dari modul Proposal atau Dokumen Saya.
             </div>
           ) : (
             <div className="space-y-3">
-              {recentSessions.map((session) => {
+              {uniqueRecentSessions.map((session) => {
                 const document = Array.isArray(session.documents)
                   ? session.documents[0]
                   : session.documents
