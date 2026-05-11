@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
+type DocumentStructure = {
+  detected_type?: string
+  word_count?: number
+  chapters?: string[]
+  text_preview?: string
+  message?: string
+}
+
 type DocumentItem = {
   id: string
   nama_file: string
@@ -12,6 +20,7 @@ type DocumentItem = {
   storage_path: string | null
   file_size: number | null
   mime_type: string | null
+  structure: DocumentStructure | null
   created_at: string
 }
 
@@ -43,7 +52,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, created_at'
         )
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
@@ -79,7 +88,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, created_at'
         )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -363,35 +372,95 @@ export default function DocumentsPage() {
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="border rounded-xl p-5 flex flex-col md:flex-row md:items-center gap-4 justify-between"
+                  className="border rounded-xl p-5 space-y-4"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{doc.nama_file}</p>
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                        {doc.jenis}
-                      </span>
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{doc.nama_file}</p>
+                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          {doc.jenis}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        {formatFileSize(doc.file_size)} ·{' '}
+                        {formatDate(doc.created_at)}
+                      </p>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      {formatFileSize(doc.file_size)} ·{' '}
-                      {formatDate(doc.created_at)}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          doc.status === 'parsed'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}
+                      >
+                        {doc.status}
+                      </span>
+
+                      <button
+                        onClick={() => handleAnalyze(doc.id)}
+                        disabled={analyzingId === doc.id}
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                      >
+                        {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis sekarang'}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                      {doc.status}
-                    </span>
+                  {doc.structure && (
+                    <div className="rounded-lg bg-muted/40 border p-4 space-y-3">
+                      <div className="grid gap-3 md:grid-cols-3 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Tipe Terdeteksi</p>
+                          <p className="font-medium">
+                            {doc.structure.detected_type ?? '-'}
+                          </p>
+                        </div>
 
-                    <button
-                      onClick={() => handleAnalyze(doc.id)}
-                      disabled={analyzingId === doc.id}
-                      className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                    >
-                      {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis sekarang'}
-                    </button>
-                  </div>
+                        <div>
+                          <p className="text-muted-foreground">Jumlah Kata</p>
+                          <p className="font-medium">
+                            {doc.structure.word_count ?? 0}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-muted-foreground">Struktur Ditemukan</p>
+                          <p className="font-medium">
+                            {doc.structure.chapters?.length ?? 0} bagian
+                          </p>
+                        </div>
+                      </div>
+
+                      {doc.structure.chapters && doc.structure.chapters.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">Bagian terdeteksi:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {doc.structure.chapters.map((chapter) => (
+                              <span
+                                key={chapter}
+                                className="text-xs px-2 py-1 rounded-full border bg-background"
+                              >
+                                {chapter}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {doc.structure.text_preview && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">Preview Teks:</p>
+                          <p className="text-sm leading-relaxed line-clamp-4">
+                            {doc.structure.text_preview}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
