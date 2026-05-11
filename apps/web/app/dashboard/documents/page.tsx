@@ -22,6 +22,8 @@ type DocumentItem = {
   mime_type: string | null
   structure: DocumentStructure | null
   ai_summary: string | null
+  research_keywords: string[] | null
+  research_query: string | null
   created_at: string
 }
 
@@ -47,6 +49,7 @@ export default function DocumentsPage() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [summarizingId, setSummarizingId] = useState<string | null>(null)
   const [startingSessionId, setStartingSessionId] = useState<string | null>(null)
+  const [extractingKeywordsId, setExtractingKeywordsId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -55,7 +58,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, created_at'
         )
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
@@ -91,7 +94,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, created_at'
         )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -306,6 +309,41 @@ export default function DocumentsPage() {
     window.location.href = result.redirect_url
   }
 
+  async function handleExtractKeywords(documentId: string) {
+    if (!userId) {
+      setError('User tidak ditemukan')
+      return
+    }
+
+    setExtractingKeywordsId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/extract-keywords', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal mengekstrak keyword riset')
+      setExtractingKeywordsId(null)
+      return
+    }
+
+    setSuccess('Keyword riset berhasil diekstrak.')
+
+    await fetchDocuments(userId)
+
+    setExtractingKeywordsId(null)
+  }
+
   function formatFileSize(size: number | null) {
     if (!size) return '-'
 
@@ -481,6 +519,18 @@ export default function DocumentsPage() {
                       </button>
 
                       <button
+                        onClick={() => handleExtractKeywords(doc.id)}
+                        disabled={
+                          extractingKeywordsId === doc.id ||
+                          doc.status !== 'parsed' ||
+                          !doc.ai_summary
+                        }
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                      >
+                        {extractingKeywordsId === doc.id ? 'Ekstrak...' : 'Ekstrak Keyword'}
+                      </button>
+
+                      <button
                         onClick={() => handleStartGuidance(doc.id)}
                         disabled={
                           startingSessionId === doc.id ||
@@ -550,6 +600,33 @@ export default function DocumentsPage() {
                           <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                             {doc.ai_summary}
                           </div>
+                        </div>
+                      )}
+
+                      {doc.research_keywords && doc.research_keywords.length > 0 && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div>
+                            <p className="text-sm font-medium">Keyword Riset:</p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {doc.research_keywords.map((keyword) => (
+                                <span
+                                  key={keyword}
+                                  className="text-xs px-2 py-1 rounded-full border bg-background"
+                                >
+                                  {keyword}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {doc.research_query && (
+                            <div>
+                              <p className="text-sm font-medium">Query Referensi:</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {doc.research_query}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
