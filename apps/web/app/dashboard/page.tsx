@@ -96,6 +96,24 @@ export default async function DashboardPage() {
           ))}
         </div>
 
+        {/* Quick Access */}
+        <div className="space-y-4">
+          <h3 className="font-semibold">Akses Cepat</h3>
+          <a
+            href="/dashboard/references"
+            className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+          >
+            <span className="text-2xl">🔍</span>
+            <div>
+              <p className="font-medium text-sm">Cari Referensi</p>
+              <p className="text-xs text-muted-foreground">
+                250 juta+ paper dari OpenAlex
+              </p>
+            </div>
+            <span className="ml-auto text-muted-foreground">→</span>
+          </a>
+        </div>
+
         {/* Recent Sessions */}
         <div className="space-y-4">
           <h3 className="font-semibold">Sesi Terakhir</h3>
