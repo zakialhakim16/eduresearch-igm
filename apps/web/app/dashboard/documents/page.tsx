@@ -21,6 +21,7 @@ type DocumentItem = {
   file_size: number | null
   mime_type: string | null
   structure: DocumentStructure | null
+  ai_summary: string | null
   created_at: string
 }
 
@@ -44,6 +45,7 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
+  const [summarizingId, setSummarizingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -52,7 +54,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, created_at'
         )
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
@@ -88,7 +90,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, created_at'
         )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -240,6 +242,41 @@ export default function DocumentsPage() {
     await fetchDocuments(userId)
 
     setAnalyzingId(null)
+  }
+
+  async function handleSummarize(documentId: string) {
+    if (!userId) {
+      setError('User tidak ditemukan')
+      return
+    }
+
+    setSummarizingId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/summarize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal membuat ringkasan AI')
+      setSummarizingId(null)
+      return
+    }
+
+    setSuccess('Ringkasan AI berhasil dibuat.')
+
+    await fetchDocuments(userId)
+
+    setSummarizingId(null)
   }
 
   function formatFileSize(size: number | null) {
@@ -407,6 +444,14 @@ export default function DocumentsPage() {
                       >
                         {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis sekarang'}
                       </button>
+
+                      <button
+                        onClick={() => handleSummarize(doc.id)}
+                        disabled={summarizingId === doc.id || doc.status !== 'parsed'}
+                        className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
+                      >
+                        {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
+                      </button>
                     </div>
                   </div>
 
@@ -457,6 +502,15 @@ export default function DocumentsPage() {
                           <p className="text-sm leading-relaxed line-clamp-4">
                             {doc.structure.text_preview}
                           </p>
+                        </div>
+                      )}
+
+                      {doc.ai_summary && (
+                        <div className="space-y-2 border-t pt-4">
+                          <p className="text-sm font-medium">Ringkasan AI:</p>
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                            {doc.ai_summary}
+                          </div>
                         </div>
                       )}
                     </div>
