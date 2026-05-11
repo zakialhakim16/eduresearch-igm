@@ -59,6 +59,25 @@ export async function POST(request: Request) {
 
     const moduleName = mapDocumentTypeToModule(document.jenis)
 
+    const { data: existingSession } = await supabase
+      .from('sessions')
+      .select('id, modul')
+      .eq('user_id', user.id)
+      .eq('document_id', document.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingSession) {
+      return NextResponse.json({
+        success: true,
+        session_id: existingSession.id,
+        modul: existingSession.modul,
+        redirect_url: `/dashboard/${existingSession.modul}?session_id=${existingSession.id}`,
+      })
+    }
+
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({

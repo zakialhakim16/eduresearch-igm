@@ -15,6 +15,38 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
+  const { data: recentSessions } = await supabase
+    .from('sessions')
+    .select(`
+      id,
+      modul,
+      status,
+      created_at,
+      document_id,
+      documents (
+        id,
+        nama_file,
+        jenis,
+        status
+      )
+    `)
+    .eq('user_id', user.id)
+    .not('document_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    })
+  }
+
+  function getSessionUrl(modul: string, sessionId: string) {
+    return `/dashboard/${modul}?session_id=${sessionId}`
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
@@ -131,9 +163,53 @@ export default async function DashboardPage() {
         {/* Recent Sessions */}
         <div className="space-y-4">
           <h3 className="font-semibold">Sesi Terakhir</h3>
-          <div className="border rounded-xl p-6 text-center text-muted-foreground text-sm">
-            Belum ada sesi. Mulai dari modul Proposal di atas!
-          </div>
+
+          {!recentSessions || recentSessions.length === 0 ? (
+            <div className="border rounded-xl p-6 text-center text-muted-foreground text-sm">
+              Belum ada sesi. Mulai dari modul Proposal atau Dokumen Saya.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentSessions.map((session) => {
+                const document = Array.isArray(session.documents)
+                  ? session.documents[0]
+                  : session.documents
+
+                return (
+                  <a
+                    key={session.id}
+                    href={getSessionUrl(session.modul, session.id)}
+                    className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+                  >
+                    <span className="text-2xl">💬</span>
+
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">
+                          {document?.nama_file ?? 'Sesi Bimbingan'}
+                        </p>
+
+                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          {session.modul}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {document
+                          ? `${document.jenis} · ${document.status}`
+                          : 'Tanpa dokumen'}{' '}
+                        · {formatDate(session.created_at)}
+                      </p>
+                    </div>
+
+                    <span className="text-sm text-muted-foreground">
+                      Lanjutkan →
+                    </span>
+                  </a>
+                )
+              })}
+            </div>
+          )}
         </div>
 
       </main>
