@@ -5,12 +5,14 @@ type AnalyzeRequest = {
   document_id: string
 }
 
-type RustParseResponse = {
+type RustParseFileResponse = {
   document_id: string
   status: string
   detected_type: string
   word_count: number
   chapters: string[]
+  text_preview: string
+  extracted_text: string
   message: string
 }
 
@@ -33,10 +35,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: document, error: documentError } = await supabase
@@ -53,6 +52,24 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!document.storage_path) {
+      return NextResponse.json(
+        { error: 'Dokumen tidak memiliki storage_path' },
+        { status: 400 }
+      )
+    }
+
+    const { data: fileBlob, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(document.storage_path)
+
+    if (downloadError || !fileBlob) {
+      return NextResponse.json(
+        { error: 'Gagal mengambil file dari storage' },
+        { status: 500 }
+      )
+    }
+
     const parserUrl = process.env.DOC_PARSER_URL
 
     if (!parserUrl) {
@@ -62,33 +79,40 @@ export async function POST(request: Request) {
       )
     }
 
-    const parserResponse = await fetch(`${parserUrl}/parse`, {
+    const formData = new FormData()
+    formData.append('document_id', document.id)
+    formData.append('file_name', document.nama_file)
+    formData.append('mime_type', document.mime_type ?? 'application/pdf')
+    formData.append('file', fileBlob, document.nama_file)
+
+    const parserResponse = await fetch(`${parserUrl}/parse-file`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        document_id: document.id,
-        file_name: document.nama_file,
-        storage_path: document.storage_path,
-        mime_type: document.mime_type,
-      }),
+      body: formData,
     })
+
+    const parserJson = await parserResponse.json()
 
     if (!parserResponse.ok) {
       return NextResponse.json(
-        { error: 'Rust doc-parser gagal memproses dokumen' },
+        { error: parserJson.error ?? 'Rust doc-parser gagal memproses file' },
         { status: 500 }
       )
     }
 
-    const parseResult = (await parserResponse.json()) as RustParseResponse
+    const parseResult = parserJson as RustParseFileResponse
 
     const { error: updateError } = await supabase
       .from('documents')
       .update({
         status: parseResult.status,
-        structure: parseResult,
+        extracted_text: parseResult.extracted_text,
+        structure: {
+          detected_type: parseResult.detected_type,
+          word_count: parseResult.word_count,
+          chapters: parseResult.chapters,
+          text_preview: parseResult.text_preview,
+          message: parseResult.message,
+        },
       })
       .eq('id', document.id)
       .eq('user_id', user.id)
@@ -103,7 +127,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       document_id: document.id,
-      result: parseResult,
+      result: {
+        detected_type: parseResult.detected_type,
+        word_count: parseResult.word_count,
+        chapters: parseResult.chapters,
+        text_preview: parseResult.text_preview,
+        message: parseResult.message,
+      },
     })
   } catch (error) {
     console.error(error)
