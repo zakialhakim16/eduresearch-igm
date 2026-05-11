@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const OPENALEX_URL = 'https://api.openalex.org'
 
 export interface Paper {
@@ -14,6 +13,30 @@ export interface Paper {
   is_open_access: boolean
 }
 
+// Extract type untuk OpenAlex response
+interface OpenAlexWork {
+  id: string
+  title?: string
+  authorships?: {
+    author?: {
+      display_name?: string
+    }
+  }[]
+  publication_year: number
+  primary_location?: {
+    source?: {
+      display_name?: string
+    }
+    landing_page_url?: string
+  }
+  cited_by_count?: number
+  abstract?: string
+  doi?: string
+  open_access?: {
+    is_oa?: boolean
+  }
+}
+
 export async function searchPapers(
   query: string,
   filters?: {
@@ -26,7 +49,7 @@ export async function searchPapers(
     search: query,
     per_page: String(filters?.per_page || 10),
     sort: 'cited_by_count:desc',
-    'mailto': 'eduresearch@uigm.ac.id'
+    mailto: 'eduresearch@uigm.ac.id'
   })
 
   if (filters?.year_from) {
@@ -47,13 +70,13 @@ export async function searchPapers(
 
   const data = await response.json()
 
-  return data.results.map((work: Record<string, unknown>) => ({
+  return data.results.map((work: OpenAlexWork): Paper => ({
     id: work.id,
     title: work.title || 'Judul tidak tersedia',
     authors: work.authorships
       ?.slice(0, 3)
-      .map((a: Record<string, unknown>) => (a.author as Record<string, unknown>)?.display_name)
-      .filter(Boolean) || [],
+      .map((a) => a.author?.display_name)
+      .filter((name): name is string => Boolean(name)) || [],
     year: work.publication_year,
     journal: work.primary_location?.source?.display_name || 'Jurnal tidak diketahui',
     cited_by_count: work.cited_by_count || 0,
