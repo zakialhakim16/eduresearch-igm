@@ -119,7 +119,7 @@ export default function RegisterPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">Daftar EduResearch AI</h1>
           <p className="text-muted-foreground text-sm">
-            Step {step} dari 2
+            Mulai perjalanan riset akademikmu bersama AI mentor
           </p>
           {/* Progress bar */}
           <div className="w-full bg-muted rounded-full h-1.5">
@@ -176,7 +176,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <button
               onClick={() => {
@@ -245,7 +245,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-3">
               <button

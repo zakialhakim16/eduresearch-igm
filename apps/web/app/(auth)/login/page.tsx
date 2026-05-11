@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [npm, setNpm] = useState('')
@@ -37,62 +38,90 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md p-8 space-y-6 border rounded-xl shadow-sm">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">EduResearch AI</h1>
-          <p className="text-muted-foreground text-sm">
-            Masuk dengan NPM UIGM kamu
-          </p>
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center gap-8 px-6 py-10 lg:gap-14">
+        <section className="w-full lg:w-[42%]">
+          <div className="mb-12">
+            <p className="text-lg font-semibold tracking-tight">EduResearch</p>
+          </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">NPM</label>
-            <div className="flex items-center border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary">
-              <input
-                type="text"
-                placeholder="2023110105"
-                value={npm}
-                onChange={(e) => handleNpmChange(e.target.value)}
-                className="flex-1 px-3 py-2 text-sm focus:outline-none"
-              />
-              <span className="px-3 py-2 bg-muted text-muted-foreground text-sm border-l">
-                @student.uigm.ac.id
-              </span>
+          <div className="space-y-10">
+            <div className="space-y-3">
+              <h1 className="max-w-sm text-4xl font-semibold leading-tight md:text-5xl">
+                Bimbingan Riset
+                <br />
+                Berbasis AI
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Platform mentor riset digital untuk mahasiswa UIGM. Mulai dari proposal hingga publikasi jurnal.
+              </p>
+            </div>
+
+            <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">NPM</label>
+                <div className="flex items-center overflow-hidden rounded-lg border border-input bg-muted focus-within:ring-2 focus-within:ring-primary">
+                  <input
+                    type="text"
+                    placeholder="2023110105"
+                    value={npm}
+                    onChange={(e) => handleNpmChange(e.target.value)}
+                    className="flex-1 bg-transparent px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
+                  />
+                  <span className="border-l border-border bg-muted px-3 py-2.5 text-xs text-muted-foreground">
+                    @student.uigm.ac.id
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Password</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-muted px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? 'Masuk...' : 'Masuk'}
+              </button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Belum punya akun?{' '}
+                <Link href="/register" className="text-foreground hover:underline">
+                  Daftar sekarang
+                </Link>
+              </p>
             </div>
           </div>
+        </section>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+        <section className="hidden flex-1 lg:block">
+          <div className="mx-auto w-full max-w-xl rounded-3xl bg-primary p-14 text-primary-foreground shadow-2xl">
+            <p className="mb-12 text-3xl font-semibold tracking-tight">EduResearch AI</p>
+            <h2 className="text-6xl font-semibold leading-tight">
+              Bimbingan Riset
+              <br />
+              Cerdas &
+              <br />
+              Terstruktur
+            </h2>
+            <p className="mt-8 text-lg opacity-90">
+              AI bukan menuliskan, tapi membimbing.
+              <br />
+              Kamu yang berpikir, AI yang memandu.
+            </p>
           </div>
-
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? 'Masuk...' : 'Masuk'}
-          </button>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Belum punya akun?{' '}
-            <a href="/register" className="text-primary hover:underline">
-              Daftar sekarang
-            </a>
-          </p>
-        </div>
+        </section>
       </div>
     </div>
   )
