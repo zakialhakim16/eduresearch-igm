@@ -182,6 +182,14 @@ export default async function DashboardLayout({
             <div className="flex items-center gap-3 text-sm">
               <Link href="/dashboard/documents">Dokumen</Link>
               <Link href="/dashboard/proposal">Chat</Link>
+              <form action="/api/auth/logout" method="post">
+                <button
+                  type="submit"
+                  className="rounded-lg border px-2 py-1 text-xs text-muted-foreground hover:bg-background hover:text-foreground"
+                >
+                  Keluar
+                </button>
+              </form>
             </div>
           </header>
 

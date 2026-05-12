@@ -108,7 +108,9 @@ export default function RegisterPage() {
       }
     }
 
+    router.refresh()
     router.push('/dashboard')
+    setLoading(false)
   }
 
   return (

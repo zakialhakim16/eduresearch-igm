@@ -1,250 +1,268 @@
 'use client'
 
 import { useState } from 'react'
-import { Paper } from '@/lib/openalex'
+
+type ReferenceItem = {
+  id?: string
+  openalex_id?: string
+  title: string
+  authors?: string[]
+  year?: number | null
+  publication_year?: number | null
+  journal?: string | null
+  source?: string | null
+  doi?: string | null
+  url?: string | null
+  abstract?: string | null
+  cited_by_count?: number | null
+  is_open_access?: boolean | null
+}
 
 export default function ReferencesPage() {
   const [query, setQuery] = useState('')
-  const [papers, setPapers] = useState<Paper[]>([])
+  const [references, setReferences] = useState<ReferenceItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
   const [error, setError] = useState('')
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
-  const [yearFrom, setYearFrom] = useState('2019')
-  const [openAccess, setOpenAccess] = useState(false)
 
-  async function handleSearch() {
-    if (!query.trim()) return
+  async function handleSearch(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault()
+
+    const trimmedQuery = query.trim()
+
+    if (!trimmedQuery) {
+      setError('Masukkan topik atau keyword referensi terlebih dahulu.')
+      return
+    }
+
     setLoading(true)
     setError('')
-    setPapers([])
+    setSearched(true)
+    setReferences([])
 
     try {
-      const params = new URLSearchParams({
-        q: query,
-        year_from: yearFrom,
-        open_access: String(openAccess),
-        per_page: '10'
-      })
+      const response = await fetch(
+        `/api/references?query=${encodeURIComponent(trimmedQuery)}`
+      )
 
-      const response = await fetch(`/api/references?${params}`)
-      const data = await response.json()
+      const result = await response.json()
 
-      if (!response.ok) throw new Error(data.error)
-      setPapers(data.papers)
+      if (!response.ok) {
+        throw new Error(result.error ?? 'Gagal mencari referensi')
+      }
 
-    } catch (err) {
-      setError('Gagal mencari referensi. Coba lagi!')
-      console.error(err)
+      const data =
+        result.references ??
+        result.papers ??
+        result.results ??
+        result.data ??
+        []
+
+      setReferences(data)
+    } catch (error) {
+      console.error(error)
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Terjadi kesalahan saat mencari referensi.'
+      )
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
-  async function handleSave(paper: Paper) {
-    try {
-      const response = await fetch('/api/references', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paper, sessionId: null })
-      })
+  function getReferenceId(ref: ReferenceItem, index: number) {
+    return ref.openalex_id ?? ref.id ?? `${ref.title}-${index}`
+  }
 
-      if (response.ok) {
-        setSavedIds(prev => new Set([...prev, paper.id]))
-      }
-    } catch (err) {
-      console.error('Gagal simpan:', err)
-    }
+  function getYear(ref: ReferenceItem) {
+    return ref.year ?? ref.publication_year ?? null
+  }
+
+  function getJournal(ref: ReferenceItem) {
+    return ref.journal ?? ref.source ?? 'Sumber tidak tersedia'
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <nav className="border-b px-6 py-4 flex items-center gap-4">
-        <a href="/dashboard" className="text-muted-foreground hover:text-foreground text-sm">
-          ← Dashboard
-        </a>
-        <span className="text-muted-foreground">/</span>
-        <h1 className="font-semibold">Cari Referensi</h1>
-      </nav>
+    <div className="min-h-screen px-6 py-10">
+      <div className="mx-auto max-w-4xl space-y-10">
+        <section className="space-y-3 text-center pt-8">
+          <p className="text-sm text-muted-foreground">Reference Engine</p>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Cari referensi akademik
+          </h1>
 
-        {/* Search Box */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-bold mb-1">Cari Referensi Akademik</h2>
-            <p className="text-sm text-muted-foreground">
-              Didukung oleh OpenAlex — 250 juta+ karya ilmiah
-            </p>
-          </div>
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            Masukkan topik riset, metode, atau keyword penelitian. EduResearch
+            akan membantu menemukan paper yang relevan dari sumber akademik.
+          </p>
+        </section>
 
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Contoh: IoT waste management, machine learning education..."
-              className="flex-1 px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <button
-              onClick={handleSearch}
-              disabled={loading || !query.trim()}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? 'Mencari...' : 'Cari'}
-            </button>
-          </div>
+        <section className="mx-auto max-w-3xl">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="rounded-2xl border bg-background p-3 shadow-sm">
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                rows={3}
+                placeholder="Contoh: support vector machine phishing website detection chi-square feature selection"
+                className="w-full resize-none bg-transparent px-2 py-2 text-sm outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    e.currentTarget.form?.requestSubmit()
+                  }
+                }}
+              />
 
-          {/* Filters */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Dari tahun:</label>
-              <select
-                value={yearFrom}
-                onChange={(e) => setYearFrom(e.target.value)}
-                className="px-3 py-1.5 border rounded-lg text-sm bg-background focus:outline-none"
-              >
-                <option value="2019">2019</option>
-                <option value="2020">2020</option>
-                <option value="2021">2021</option>
-                <option value="2022">2022</option>
-                <option value="2023">2023</option>
-                <option value="2024">2024</option>
-              </select>
+              <div className="flex items-center justify-between border-t pt-3">
+                <p className="text-xs text-muted-foreground">
+                  Tekan Enter untuk cari, Shift + Enter untuk baris baru.
+                </p>
+
+                <button
+                  type="submit"
+                  disabled={loading || !query.trim()}
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  {loading ? 'Mencari...' : 'Cari Referensi'}
+                </button>
+              </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={openAccess}
-                onChange={(e) => setOpenAccess(e.target.checked)}
-                className="rounded"
-              />
-              Open Access saja
-            </label>
-          </div>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="px-4 py-3 bg-red-50 text-red-600 rounded-xl text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="space-y-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="border rounded-xl p-5 space-y-3 animate-pulse">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-                <div className="h-3 bg-muted rounded w-full" />
-                <div className="h-3 bg-muted rounded w-5/6" />
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </form>
+        </section>
 
-        {/* Results */}
-        {!loading && papers.length > 0 && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {papers.length} hasil ditemukan
-            </p>
-
-            {papers.map((paper) => (
-              <div
-                key={paper.id}
-                className="border rounded-xl p-5 space-y-3 hover:shadow-md transition-shadow"
+        {!searched && (
+          <section className="grid gap-3 md:grid-cols-3">
+            {[
+              'phishing website detection',
+              'support vector machine classification',
+              'chi-square feature selection',
+            ].map((example) => (
+              <button
+                key={example}
+                onClick={() => setQuery(example)}
+                className="rounded-2xl border p-4 text-left text-sm hover:bg-muted/40"
               >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-semibold text-sm leading-relaxed flex-1">
-                    {paper.title}
-                  </h3>
-                  {paper.is_open_access && (
-                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full whitespace-nowrap shrink-0">
-                      Open Access
-                    </span>
-                  )}
-                </div>
+                <p className="font-medium">{example}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Gunakan sebagai contoh pencarian.
+                </p>
+              </button>
+            ))}
+          </section>
+        )}
 
-                {/* Meta */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  {paper.authors.length > 0 && (
-                    <span>👤 {paper.authors.join(', ')}{paper.authors.length >= 3 ? ' et al.' : ''}</span>
-                  )}
-                  <span>📅 {paper.year}</span>
-                  <span>📰 {paper.journal}</span>
-                  <span>🔖 {paper.cited_by_count} sitasi</span>
-                </div>
-
-                {/* Abstract */}
-                {paper.abstract && paper.abstract !== 'Abstrak tidak tersedia' && (
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                    {paper.abstract}
-                  </p>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-1">
-                  {paper.url && (
-                    <a
-                      href={paper.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Buka Paper →
-                    </a>
-                  )}
-                  {paper.doi && (
-                    <span className="text-xs text-muted-foreground">
-                      DOI: {paper.doi.replace('https://doi.org/', '')}
-                    </span>
-                  )}
-                  <div className="ml-auto">
-                    <button
-                      onClick={() => handleSave(paper)}
-                      disabled={savedIds.has(paper.id)}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                        savedIds.has(paper.id)
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-primary text-primary-foreground hover:opacity-90'
-                      }`}
-                    >
-                      {savedIds.has(paper.id) ? '✓ Tersimpan' : 'Simpan'}
-                    </button>
-                  </div>
-                </div>
+        {loading && (
+          <section className="space-y-3">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border p-5 space-y-3 animate-pulse"
+              >
+                <div className="h-4 w-2/3 rounded bg-muted" />
+                <div className="h-3 w-1/2 rounded bg-muted" />
+                <div className="h-3 w-full rounded bg-muted" />
+                <div className="h-3 w-5/6 rounded bg-muted" />
               </div>
             ))}
-          </div>
+          </section>
         )}
 
-        {/* Empty state */}
-        {!loading && papers.length === 0 && query && !error && (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            Tidak ada hasil untuk &quot;{query}&quot;
-          </div>
-        )}
-
-        {/* Initial state */}
-        {!loading && papers.length === 0 && !query && (
-          <div className="text-center py-12 space-y-2">
-            <p className="text-4xl">🔍</p>
-            <p className="text-muted-foreground text-sm">
-              Ketik topik penelitianmu untuk mencari referensi
+        {!loading && searched && references.length === 0 && !error && (
+          <section className="rounded-2xl border p-8 text-center">
+            <p className="font-medium">Belum ada referensi ditemukan</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Coba gunakan keyword yang lebih umum, misalnya metode utama atau
+              bidang penelitian.
             </p>
-            <p className="text-xs text-muted-foreground">
-              Contoh: &quot;machine learning&quot;, &quot;IoT agriculture&quot;, &quot;sistem informasi&quot;
-            </p>
-          </div>
+          </section>
         )}
 
-      </main>
+        {!loading && references.length > 0 && (
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-semibold">Hasil Referensi</h2>
+              <p className="text-sm text-muted-foreground">
+                Ditemukan {references.length} referensi untuk pencarian ini.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {references.map((ref, index) => (
+                <article
+                  key={getReferenceId(ref, index)}
+                  className="rounded-2xl border bg-background p-5 space-y-3 hover:shadow-sm transition-shadow"
+                >
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {ref.is_open_access && (
+                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">
+                          Open Access
+                        </span>
+                      )}
+
+                      {getYear(ref) && (
+                        <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                          {getYear(ref)}
+                        </span>
+                      )}
+
+                      <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        Sitasi: {ref.cited_by_count ?? 0}
+                      </span>
+                    </div>
+
+                    <h3 className="font-semibold leading-relaxed">{ref.title}</h3>
+
+                    <p className="text-sm text-muted-foreground">
+                      {ref.authors && ref.authors.length > 0
+                        ? ref.authors.slice(0, 5).join(', ')
+                        : 'Author tidak tersedia'}
+                    </p>
+
+                    <p className="text-sm text-muted-foreground">
+                      {getJournal(ref)}
+                    </p>
+                  </div>
+
+                  {ref.abstract && (
+                    <p className="line-clamp-4 text-sm leading-relaxed text-muted-foreground">
+                      {ref.abstract}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    {ref.url && (
+                      <a
+                        href={ref.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-lg border px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        Buka Referensi →
+                      </a>
+                    )}
+
+                    {ref.doi && (
+                      <span className="text-xs text-muted-foreground">
+                        DOI: {ref.doi}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   )
 }

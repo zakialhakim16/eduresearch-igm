@@ -34,7 +34,10 @@ export default function LoginPage() {
       return
     }
 
+    // Supaya cookie sesi terbaca di Server Components / middleware setelah login
+    router.refresh()
     router.push('/dashboard')
+    setLoading(false)
   }
 
   return (

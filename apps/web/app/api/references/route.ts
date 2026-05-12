@@ -13,14 +13,14 @@ export async function GET(req: NextRequest) {
 
     // Ambil query params
     const { searchParams } = new URL(req.url)
-    const query = searchParams.get('q')
+    const query = searchParams.get('q') ?? searchParams.get('query')
     const yearFrom = searchParams.get('year_from')
     const openAccess = searchParams.get('open_access')
     const perPage = searchParams.get('per_page')
 
     if (!query) {
       return NextResponse.json(
-        { error: 'Query parameter q is required' },
+        { error: 'Parameter q atau query wajib diisi' },
         { status: 400 }
       )
     }
