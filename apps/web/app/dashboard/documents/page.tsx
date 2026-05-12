@@ -383,7 +383,7 @@ export default function DocumentsPage() {
       return
     }
 
-    setSuccess('Ringkasan AI berhasil dibuat.')
+    setSuccess('Ringkasan AI sudah dibuat.')
 
     await fetchDocuments(userId)
 
@@ -444,7 +444,7 @@ export default function DocumentsPage() {
       return
     }
 
-    setSuccess('Keyword riset berhasil diekstrak.')
+    setSuccess('Keyword riset sudah siap.')
 
     await fetchDocuments(userId)
 
@@ -489,9 +489,7 @@ export default function DocumentsPage() {
         }`
       )
     } else {
-      setSuccess(
-        `Rekomendasi referensi berhasil ditemukan: ${references.length} paper. Query: ${result.query}`
-      )
+      setSuccess('Rekomendasi paper berhasil ditemukan.')
     }
 
     setFindingReferencesId(null)
@@ -526,7 +524,7 @@ export default function DocumentsPage() {
       return
     }
 
-    setSuccess('Referensi berhasil disimpan ke library.')
+    setSuccess('Referensi sudah disimpan ke library.')
 
     await fetchSavedReferences([documentId])
 
@@ -556,7 +554,7 @@ export default function DocumentsPage() {
       return
     }
 
-    setSuccess('Analisis gap referensi berhasil dibuat.')
+    setSuccess('Analisis kekuatan referensi sudah dibuat.')
 
     if (userId) {
       await fetchDocuments(userId)
@@ -779,15 +777,23 @@ export default function DocumentsPage() {
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          doc.status === 'parsed'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
-                        {doc.status}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`w-fit text-xs px-2 py-1 rounded-full ${
+                            doc.status === 'parsed'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {doc.status === 'parsed' ? 'Sudah dianalisis' : 'Menunggu analisis'}
+                        </span>
+
+                        <span className="text-xs text-muted-foreground">
+                          {doc.status === 'parsed'
+                            ? 'Dokumen siap dipakai untuk bimbingan.'
+                            : 'Klik Baca Dokumen untuk mulai.'}
+                        </span>
+                      </div>
 
                       <button
                         onClick={() => handleStartGuidance(doc.id)}
@@ -841,6 +847,43 @@ export default function DocumentsPage() {
                         </div>
                       </div>
 
+                      <div className="grid gap-2 md:grid-cols-4">
+                        {[
+                          {
+                            label: 'Dokumen dibaca',
+                            done: doc.status === 'parsed',
+                          },
+                          {
+                            label: 'Ringkasan AI',
+                            done: Boolean(doc.ai_summary),
+                          },
+                          {
+                            label: 'Keyword riset',
+                            done: Boolean(doc.research_keywords?.length),
+                          },
+                          {
+                            label: 'Referensi tersimpan',
+                            done: Boolean(savedReferences[doc.id]?.length),
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.label}
+                            className="rounded-xl border bg-background p-3 text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{item.done ? '✅' : '○'}</span>
+                              <span
+                                className={
+                                  item.done ? 'font-medium' : 'text-muted-foreground'
+                                }
+                              >
+                                {item.label}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
                       {getActiveDocumentTab(doc.id) === 'summary' && (
                         <div className="space-y-4">
                           <div className="rounded-xl border bg-background p-4 space-y-3">
@@ -851,14 +894,14 @@ export default function DocumentsPage() {
                                 disabled={analyzingId === doc.id}
                                 className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
-                                {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis Dokumen'}
+                                {analyzingId === doc.id ? 'Membaca...' : 'Baca Dokumen'}
                               </button>
                               <button
                                 onClick={() => handleSummarize(doc.id)}
                                 disabled={summarizingId === doc.id || doc.status !== 'parsed'}
                                 className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
-                                {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
+                                {summarizingId === doc.id ? 'Meringkas...' : 'Buat Ringkasan'}
                               </button>
                             </div>
                           </div>
@@ -1052,8 +1095,8 @@ export default function DocumentsPage() {
                                 className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
                                 {extractingKeywordsId === doc.id
-                                  ? 'Ekstrak...'
-                                  : 'Ekstrak Keyword'}
+                                  ? 'Mengambil...'
+                                  : 'Ambil Keyword'}
                               </button>
 
                               <button
@@ -1061,7 +1104,7 @@ export default function DocumentsPage() {
                                 disabled={findingReferencesId === doc.id || !doc.research_query}
                                 className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
-                                {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
+                                {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Paper'}
                               </button>
 
                               <button
@@ -1073,8 +1116,8 @@ export default function DocumentsPage() {
                                 className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
                                 {analyzingReferenceGapId === doc.id
-                                  ? 'Menganalisis...'
-                                  : 'Analisis Gap Referensi'}
+                                  ? 'Mengecek...'
+                                  : 'Cek Kekuatan Referensi'}
                               </button>
                             </div>
                           </div>
@@ -1215,7 +1258,7 @@ export default function DocumentsPage() {
                         <div className="space-y-4">
                           <div className="rounded-xl border bg-background p-4 space-y-3">
                             <div>
-                              <p className="text-sm font-medium">Analisis Gap Referensi</p>
+                              <p className="text-sm font-medium">Kekuatan referensi</p>
                               <p className="text-xs text-muted-foreground">
                                 Evaluasi AI terhadap kecukupan referensi yang kamu simpan.
                               </p>
@@ -1227,8 +1270,8 @@ export default function DocumentsPage() {
                               </div>
                             ) : (
                               <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
-                                Belum ada analisis gap referensi. Buka tab Referensi lalu klik
-                                Analisis Gap Referensi.
+                                Belum ada analisis kekuatan referensi. Buka tab Referensi lalu klik
+                                Cek Kekuatan Referensi.
                               </div>
                             )}
                           </div>
