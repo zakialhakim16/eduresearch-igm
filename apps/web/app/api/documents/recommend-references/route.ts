@@ -82,7 +82,7 @@ async function searchOpenAlex(query: string) {
   const openAlexUrl = new URL('https://api.openalex.org/works')
 
   openAlexUrl.searchParams.set('search', query)
-  openAlexUrl.searchParams.set('per-page', '10')
+  openAlexUrl.searchParams.set('per-page', '15')
   openAlexUrl.searchParams.set('sort', 'relevance_score:desc')
 
   const response = await fetch(openAlexUrl.toString(), {
@@ -178,26 +178,57 @@ export async function POST(request: Request) {
       )
     }
 
-    let references: ReturnType<typeof mapOpenAlexWorks> = []
-    let queryUsed = ''
+    let allReferences: ReturnType<typeof mapOpenAlexWorks> = []
     const triedQueries: string[] = []
 
     for (const query of fallbackQueries) {
       triedQueries.push(query)
 
       const works = await searchOpenAlex(query)
+      const mapped = mapOpenAlexWorks(works)
 
-      if (works.length > 0) {
-        references = mapOpenAlexWorks(works)
-        queryUsed = query
+      allReferences = [...allReferences, ...mapped]
+
+      // Kalau sudah cukup banyak, stop agar tidak terlalu banyak request
+      if (allReferences.length >= 25) {
         break
       }
     }
 
+    // Hapus duplikat berdasarkan OpenAlex ID
+    const uniqueReferences = Array.from(
+      new Map(
+        allReferences.map((reference) => [
+          reference.openalex_id,
+          reference,
+        ])
+      ).values()
+    )
+
+    // Ranking sederhana:
+    // 1. Ada abstract lebih bagus
+    // 2. Tahun terbaru lebih bagus
+    // 3. Sitasi lebih tinggi lebih bagus
+    const references = uniqueReferences
+      .sort((a, b) => {
+        const aScore =
+          (a.abstract ? 20 : 0) +
+          (a.year ? Math.max(0, a.year - 2018) : 0) +
+          Math.min(a.cited_by_count ?? 0, 100)
+
+        const bScore =
+          (b.abstract ? 20 : 0) +
+          (b.year ? Math.max(0, b.year - 2018) : 0) +
+          Math.min(b.cited_by_count ?? 0, 100)
+
+        return bScore - aScore
+      })
+      .slice(0, 15)
+
     return NextResponse.json({
       success: true,
       document_id: document.id,
-      query: queryUsed,
+      query: triedQueries[0],
       tried_queries: triedQueries,
       references,
     })
