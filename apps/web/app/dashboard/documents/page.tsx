@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckCircle2, Circle, FolderOpen } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
@@ -736,8 +737,8 @@ export default function DocumentsPage() {
 
           {documents.length === 0 ? (
             <div className="rounded-2xl border bg-muted/30 p-8 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-background text-2xl">
-                📁
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-background">
+                <FolderOpen className="h-6 w-6 text-muted-foreground" aria-hidden />
               </div>
               <p className="font-medium">Belum ada dokumen</p>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -871,7 +872,17 @@ export default function DocumentsPage() {
                             className="rounded-xl border bg-background p-3 text-sm"
                           >
                             <div className="flex items-center gap-2">
-                              <span>{item.done ? '✅' : '○'}</span>
+                              {item.done ? (
+                                <CheckCircle2
+                                  className="h-4 w-4 shrink-0 text-primary"
+                                  aria-hidden
+                                />
+                              ) : (
+                                <Circle
+                                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                                  aria-hidden
+                                />
+                              )}
                               <span
                                 className={
                                   item.done ? 'font-medium' : 'text-muted-foreground'

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { FolderOpen, PenLine, Search } from 'lucide-react'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 function formatDate(date: string) {
@@ -18,7 +19,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('nama, jenjang, fakultas, prodi')
+    .select('nama')
     .eq('id', user?.id)
     .single()
 
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
 
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, modul, status, created_at, document_id')
+    .select('id, title, modul, status, created_at, document_id')
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false })
     .limit(5)
@@ -70,7 +71,7 @@ export default async function DashboardPage() {
         <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-5">
           <Link href="/dashboard/proposal" className="group dash-action-card">
             <div className="dash-action-card-icon bg-gradient-to-br from-primary/25 to-primary/5 shadow-primary/10">
-              ✍️
+              <PenLine className="h-7 w-7 text-primary" aria-hidden />
             </div>
             <div>
               <h2 className="font-semibold tracking-tight">Mulai Bimbingan</h2>
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
 
           <Link href="/dashboard/documents" className="group dash-action-card">
             <div className="dash-action-card-icon bg-gradient-to-br from-accent/35 to-accent/10">
-              📁
+              <FolderOpen className="h-7 w-7 text-accent-foreground/90" aria-hidden />
             </div>
             <div>
               <h2 className="font-semibold tracking-tight">Upload Dokumen</h2>
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
             className="group dash-action-card sm:col-span-2 md:col-span-1"
           >
             <div className="dash-action-card-icon bg-gradient-to-br from-chart-1/25 via-primary/15 to-chart-2/20">
-              🔍
+              <Search className="h-7 w-7 text-primary" aria-hidden />
             </div>
             <div>
               <h2 className="font-semibold tracking-tight">Cari Referensi</h2>
@@ -176,7 +177,7 @@ export default async function DashboardPage() {
                       <p className="text-sm font-medium group-hover:text-primary">
                         {session.document_id
                           ? `Sesi ${session.modul}`
-                          : 'Bimbingan Baru'}
+                          : session.title ?? 'Bimbingan Baru'}
                       </p>
 
                       <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60 dark:bg-background/50">
@@ -191,42 +192,6 @@ export default async function DashboardPage() {
                 ))}
               </div>
             )}
-          </div>
-        </section>
-
-        <section className="dash-panel">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Profil Akademik
-          </h2>
-
-          <div className="mt-6 grid gap-5 text-sm md:grid-cols-2">
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Nama
-              </p>
-              <p className="font-medium">{profile?.nama ?? '-'}</p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Jenjang
-              </p>
-              <p className="font-medium">{profile?.jenjang ?? '-'}</p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Fakultas
-              </p>
-              <p className="font-medium">{profile?.fakultas ?? '-'}</p>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Program Studi
-              </p>
-              <p className="font-medium">{profile?.prodi ?? '-'}</p>
-            </div>
           </div>
         </section>
       </div>

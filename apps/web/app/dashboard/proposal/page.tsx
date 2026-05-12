@@ -198,6 +198,12 @@ export default function ProposalPage() {
       if (!sessionIdForRequest) {
         const sessionResponse = await fetch('/api/sessions/new', {
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            first_message: trimmedInput,
+          }),
         })
 
         const sessionResult = await sessionResponse.json()
@@ -302,7 +308,7 @@ export default function ProposalPage() {
 
   if (loadingSession) {
     return (
-      <div className="ai-chat-surface flex min-h-screen flex-col items-center justify-center gap-4">
+      <div className="ai-chat-surface flex min-h-0 flex-1 flex-col items-center justify-center gap-4 py-16">
         <div
           className="h-9 w-9 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
           aria-hidden
@@ -315,8 +321,8 @@ export default function ProposalPage() {
   }
 
   return (
-    <div className="ai-chat-surface flex min-h-[100dvh] flex-col bg-background/90 md:h-screen">
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/80 px-4 py-3.5 shadow-sm shadow-black/[0.02] backdrop-blur-xl md:px-6 dark:shadow-black/20">
+    <div className="ai-chat-surface flex min-h-0 flex-1 flex-col overflow-hidden bg-background/90">
+      <header className="shrink-0 z-30 border-b border-border/50 bg-background/80 px-4 py-3.5 shadow-sm shadow-black/[0.02] backdrop-blur-xl md:px-6 dark:shadow-black/20">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-medium uppercase tracking-wider text-primary/90">
@@ -405,7 +411,7 @@ export default function ProposalPage() {
         </div>
       </main>
 
-      <footer className="border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4 pb-24 md:pb-4">
+      <footer className="shrink-0 border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4 pb-24 md:pb-4">
         <div className="mx-auto max-w-3xl space-y-3">
           <form
             onSubmit={handleSubmit}
