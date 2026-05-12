@@ -114,6 +114,14 @@ export default async function DashboardLayout({
                 <span>🏠</span>
                 <span>Dashboard</span>
               </Link>
+
+              <Link
+                href="/dashboard/settings"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
+              >
+                <span>⚙️</span>
+                <span>Settings</span>
+              </Link>
             </div>
 
             <div className="space-y-2">
@@ -182,14 +190,7 @@ export default async function DashboardLayout({
             <div className="flex items-center gap-3 text-sm">
               <Link href="/dashboard/documents">Dokumen</Link>
               <Link href="/dashboard/proposal">Chat</Link>
-              <form action="/api/auth/logout" method="post">
-                <button
-                  type="submit"
-                  className="rounded-lg border px-2 py-1 text-xs text-muted-foreground hover:bg-background hover:text-foreground"
-                >
-                  Keluar
-                </button>
-              </form>
+              <Link href="/dashboard/settings">Akun</Link>
             </div>
           </header>
 
@@ -200,10 +201,10 @@ export default async function DashboardLayout({
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           <Link
             href="/dashboard"
-            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
           >
             <span className="text-lg">🏠</span>
             <span>Home</span>
@@ -211,7 +212,7 @@ export default async function DashboardLayout({
 
           <Link
             href="/dashboard/proposal"
-            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
           >
             <span className="text-lg">✍️</span>
             <span>Chat</span>
@@ -219,7 +220,7 @@ export default async function DashboardLayout({
 
           <Link
             href="/dashboard/documents"
-            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
           >
             <span className="text-lg">📁</span>
             <span>Dokumen</span>
@@ -227,10 +228,18 @@ export default async function DashboardLayout({
 
           <Link
             href="/dashboard/references"
-            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
           >
             <span className="text-lg">🔍</span>
             <span>Referensi</span>
+          </Link>
+
+          <Link
+            href="/dashboard/settings"
+            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
+          >
+            <span className="text-lg">⚙️</span>
+            <span>Setelan</span>
           </Link>
         </div>
       </nav>
