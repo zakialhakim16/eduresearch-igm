@@ -93,8 +93,9 @@ export default function DocumentsPage() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [documents, setDocuments] = useState<DocumentItem[]>([])
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>()
   const [jenis, setJenis] = useState('proposal')
+  const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
@@ -407,7 +408,7 @@ export default function DocumentsPage() {
       return
     }
 
-    window.location.href = result.redirect_url
+    router.push(result.redirect_url)
   }
 
   async function handleExtractKeywords(documentId: string) {
@@ -580,25 +581,31 @@ export default function DocumentsPage() {
     })
   }
 
+  function toggleDocumentDetail(documentId: string) {
+    setExpandedDocumentId((current) =>
+      current === documentId ? null : documentId
+    )
+  }
+
   function getChapterTitle(chapter: string | ChapterInfo) {
-  return typeof chapter === 'string' ? chapter : chapter.title
-}
-
-function getChapterMeta(chapter: string | ChapterInfo) {
-  if (typeof chapter === 'string') return null
-
-  const parts = []
-
-  if (chapter.word_count !== undefined) {
-    parts.push(`${chapter.word_count} kata`)
+    return typeof chapter === 'string' ? chapter : chapter.title
   }
 
-  if (chapter.start_line !== undefined) {
-    parts.push(`baris ${chapter.start_line}`)
-  }
+  function getChapterMeta(chapter: string | ChapterInfo) {
+    if (typeof chapter === 'string') return null
 
-  return parts.length > 0 ? parts.join(' · ') : null
-}
+    const parts: string[] = []
+
+    if (chapter.word_count !== undefined) {
+      parts.push(`${chapter.word_count} kata`)
+    }
+
+    if (chapter.start_line !== undefined) {
+      parts.push(`baris ${chapter.start_line}`)
+    }
+
+    return parts.length > 0 ? parts.join(' · ') : null
+  }
 
   if (loading) {
     return (
@@ -672,9 +679,9 @@ function getChapterMeta(chapter: string | ChapterInfo) {
 
           {selectedFile && (
             <div className="rounded-lg border p-4 text-sm">
-              <p className="font-medium">{selectedFile.name}</p>
+              <p className="font-medium">{selectedFile?.name}</p>
               <p className="text-muted-foreground">
-                {formatFileSize(selectedFile.size)} · {selectedFile.type}
+                {formatFileSize(selectedFile?.size ?? 0)} · {selectedFile?.type ?? ''}
               </p>
             </div>
           )}
@@ -711,22 +718,32 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                   key={doc.id}
                   className="border rounded-xl p-5 space-y-4"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium">{doc.nama_file}</p>
+
                         <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
                           {doc.jenis}
                         </span>
                       </div>
 
                       <p className="text-sm text-muted-foreground">
-                        {formatFileSize(doc.file_size)} ·{' '}
-                        {formatDate(doc.created_at)}
+                        {formatFileSize(doc.file_size)} · {formatDate(doc.created_at)}
                       </p>
+
+                      {doc.structure && (
+                        <p className="text-xs text-muted-foreground">
+                          {doc.structure?.detected_type ?? '-'} ·{' '}
+                          {doc.structure?.word_count ?? 0} kata
+                          {doc.structure?.quality?.total !== undefined
+                            ? ` · Skor ${doc.structure?.quality.total}/100` 
+                            : ''}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           doc.status === 'parsed'
@@ -738,96 +755,109 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                       </span>
 
                       <button
-                        onClick={() => handleAnalyze(doc.id)}
-                        disabled={analyzingId === doc.id}
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                      >
-                        {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis sekarang'}
-                      </button>
-
-                      <button
-                        onClick={() => handleFindReferences(doc.id)}
-                        disabled={findingReferencesId === doc.id}
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                      >
-                        {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
-                      </button>
-
-                      <button
-                        onClick={() => handleAnalyzeReferenceGap(doc.id)}
-                        disabled={analyzingReferenceGapId === doc.id || doc.status !== 'parsed'}
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                      >
-                        {analyzingReferenceGapId === doc.id
-                          ? 'Menganalisis...'
-                          : 'Analisis Gap Referensi'}
-                      </button>
-
-                      <button
-                        onClick={() => handleSummarize(doc.id)}
-                        disabled={summarizingId === doc.id || doc.status !== 'parsed'}
-                        className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
-                      >
-                        {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
-                      </button>
-
-                      <button
-                        onClick={() => handleExtractKeywords(doc.id)}
-                        disabled={
-                          extractingKeywordsId === doc.id ||
-                          doc.status !== 'parsed' ||
-                          !doc.ai_summary
-                        }
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                      >
-                        {extractingKeywordsId === doc.id ? 'Ekstrak...' : 'Ekstrak Keyword'}
-                      </button>
-
-                      
-                      <button
                         onClick={() => handleStartGuidance(doc.id)}
                         disabled={
                           startingSessionId === doc.id ||
                           doc.status !== 'parsed' ||
                           !doc.ai_summary
                         }
-                        className="text-sm px-3 py-2 bg-foreground text-background rounded-lg hover:opacity-90 disabled:opacity-50"
+                        className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
                       >
                         {startingSessionId === doc.id ? 'Memulai...' : 'Mulai Bimbingan'}
+                      </button>
+
+                      <button
+                        onClick={() => toggleDocumentDetail(doc.id)}
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted"
+                      >
+                        {expandedDocumentId === doc.id ? 'Sembunyikan Detail' : 'Lihat Detail'}
                       </button>
                     </div>
                   </div>
 
-                  {doc.structure && (
-                    <div className="rounded-lg bg-muted/40 border p-4 space-y-3">
+                  {expandedDocumentId === doc.id && (
+                    <div className="space-y-4">
+                      <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                        <p className="text-sm font-medium">Aksi Dokumen</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleAnalyze(doc.id)}
+                            disabled={analyzingId === doc.id}
+                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
+                          >
+                            {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis Dokumen'}
+                          </button>
+
+                          <button
+                            onClick={() => handleSummarize(doc.id)}
+                            disabled={summarizingId === doc.id || doc.status !== 'parsed'}
+                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
+                          >
+                            {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
+                          </button>
+
+                          <button
+                            onClick={() => handleExtractKeywords(doc.id)}
+                            disabled={
+                              extractingKeywordsId === doc.id ||
+                              doc.status !== 'parsed' ||
+                              !doc.ai_summary
+                            }
+                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
+                          >
+                            {extractingKeywordsId === doc.id ? 'Ekstrak...' : 'Ekstrak Keyword'}
+                          </button>
+
+                          <button
+                            onClick={() => handleFindReferences(doc.id)}
+                            disabled={findingReferencesId === doc.id || !doc.research_query}
+                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
+                          >
+                            {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
+                          </button>
+
+                          <button
+                            onClick={() => handleAnalyzeReferenceGap(doc.id)}
+                            disabled={analyzingReferenceGapId === doc.id || doc.status !== 'parsed'}
+                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
+                          >
+                            {analyzingReferenceGapId === doc.id
+                              ? 'Menganalisis...'
+                              : 'Analisis Gap Referensi'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg bg-muted/40 border p-4 space-y-3">
                       <div className="grid gap-3 md:grid-cols-3 text-sm">
                         <div>
                           <p className="text-muted-foreground">Tipe Terdeteksi</p>
                           <p className="font-medium">
-                            {doc.structure.detected_type ?? '-'}
+                            {doc.structure?.detected_type ?? '-'}
                           </p>
                         </div>
 
                         <div>
                           <p className="text-muted-foreground">Jumlah Kata</p>
                           <p className="font-medium">
-                            {doc.structure.word_count ?? 0}
+                            {doc.structure?.word_count ?? 0}
                           </p>
                         </div>
 
                         <div>
                           <p className="text-muted-foreground">Struktur Ditemukan</p>
                           <p className="font-medium">
-                            {doc.structure.chapters?.length ?? 0} bagian
+                            {doc.structure?.chapters?.length ?? 0} bagian
                           </p>
                         </div>
                       </div>
 
-                      {doc.structure.chapters && doc.structure.chapters.length > 0 && (
+                      {doc.structure?.chapters && doc.structure?.chapters.length > 0 && (
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">Bagian terdeteksi:</p>
                           <div className="flex flex-wrap gap-2">
-                            {doc.structure.chapters?.map((chapter) => {
+                            {doc.structure?.chapters?.map((chapter) => {
                               const title = getChapterTitle(chapter)
                               const meta = getChapterMeta(chapter)
 
@@ -847,21 +877,21 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                         </div>
                       )}
 
-                      {doc.structure.text_preview && (
+                      {doc.structure?.text_preview && (
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">Preview Teks:</p>
                           <p className="text-sm leading-relaxed line-clamp-4">
-                            {doc.structure.text_preview}
+                            {doc.structure?.text_preview}
                           </p>
                         </div>
                       )}
 
-                      {doc.structure.quality && (
+                      {doc.structure?.quality && (
                         <div className="space-y-2 border-t pt-4">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium">Skor Kualitas Dokumen</p>
                             <span className="text-sm font-semibold">
-                              {doc.structure.quality.total ?? 0}/100
+                              {doc.structure?.quality.total ?? 0}/100
                             </span>
                           </div>
 
@@ -874,10 +904,10 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                             />
                           </div>
 
-                          {doc.structure.quality.notes &&
-                            doc.structure.quality.notes.length > 0 && (
+                          {doc.structure?.quality?.notes &&
+                            doc.structure?.quality?.notes.length > 0 && (
                               <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                                {doc.structure.quality.notes.map((note) => (
+                                {doc.structure?.quality?.notes.map((note) => (
                                   <li key={note}>{note}</li>
                                 ))}
                               </ul>
@@ -885,14 +915,14 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                         </div>
                       )}
 
-                      {doc.structure.references && doc.structure.references.length > 0 && (
+                      {doc.structure?.references && doc.structure?.references.length > 0 && (
                         <div className="space-y-2 border-t pt-4">
                           <p className="text-sm font-medium">
                             Referensi Terdeteksi dari Dokumen:
                           </p>
 
                           <div className="space-y-2">
-                            {doc.structure.references.slice(0, 5).map((reference, index) => (
+                            {doc.structure?.references?.slice(0, 5).map((reference, index) => (
                               <div
                                 key={`${reference}-${index}`}
                                 className="rounded-lg border bg-background p-3 text-sm text-muted-foreground"
@@ -902,19 +932,19 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                             ))}
                           </div>
 
-                          {doc.structure.references.length > 5 && (
+                          {doc.structure?.references && doc.structure?.references.length > 5 && (
                             <p className="text-xs text-muted-foreground">
-                              +{doc.structure.references.length - 5} referensi lainnya terdeteksi.
+                              +{doc.structure?.references.length - 5} referensi lainnya terdeteksi.
                             </p>
                           )}
                         </div>
                       )}
 
-                      {doc.structure.keywords && doc.structure.keywords.length > 0 && (
+                      {doc.structure?.keywords && doc.structure?.keywords.length > 0 && (
                         <div className="space-y-2 border-t pt-4">
                           <p className="text-sm font-medium">Keyword dari Parser:</p>
                           <div className="flex flex-wrap gap-2">
-                            {doc.structure.keywords.map((keyword) => (
+                            {doc.structure?.keywords?.map((keyword) => (
                               <span
                                 key={keyword}
                                 className="text-xs px-2 py-1 rounded-full border bg-background"
@@ -926,34 +956,34 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                         </div>
                       )}
 
-                      {doc.structure.quality && (
+                      {doc.structure?.quality && (
                         <div className="space-y-2 border-t pt-4">
                           <div>
                             <p className="text-sm font-medium">Kualitas Dokumen:</p>
                             <div className="text-sm text-muted-foreground mt-2">
                               <p>Skor: {doc.structure.quality.total}/5</p>
                               <div className="grid grid-cols-2 gap-2 mt-2">
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_abstract ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure.quality.has_abstract ? '✓ Abstrak' : '✗ Abstrak'}
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_abstract ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure?.quality?.has_abstract ? '✓ Abstrak' : '✗ Abstrak'}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_chapters ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure.quality.has_chapters ? '✓ Struktur' : '✗ Struktur'}
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_chapters ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure?.quality?.has_chapters ? '✓ Struktur' : '✗ Struktur'}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_references ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure.quality.has_references ? '✓ Referensi' : '✗ Referensi'}
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_references ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure?.quality?.has_references ? '✓ Referensi' : '✗ Referensi'}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_methodology ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure.quality.has_methodology ? '✓ Metodologi' : '✗ Metodologi'}
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_methodology ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure?.quality?.has_methodology ? '✓ Metodologi' : '✗ Metodologi'}
                                 </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.word_count_adequate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure.quality.word_count_adequate ? '✓ Kata Cukup' : '✗ Kata Kurang'}
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.word_count_adequate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure?.quality?.word_count_adequate ? '✓ Kata Cukup' : '✗ Kata Kurang'}
                                 </span>
                               </div>
-                              {doc.structure.quality.notes && doc.structure.quality.notes.length > 0 && (
+                              {doc.structure?.quality?.notes && doc.structure?.quality?.notes.length > 0 && (
                                 <div className="mt-3">
                                   <p className="text-xs font-medium text-amber-600">Catatan:</p>
                                   <ul className="text-xs text-muted-foreground list-disc list-inside">
-                                    {doc.structure.quality.notes.map((note, i) => (
+                                    {doc.structure?.quality?.notes.map((note, i) => (
                                       <li key={i}>{note}</li>
                                     ))}
                                   </ul>
@@ -1143,6 +1173,7 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                         </div>
                       )}
                     </div>
+                  </div>
                   )}
                 </div>
               ))}
