@@ -152,13 +152,24 @@ export default async function DashboardLayout({
             </div>
           </div>
 
-          <div className="border-t px-5 py-4">
-            <p className="truncate text-sm font-medium">
-              {profile?.nama ?? 'Mahasiswa'}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {profile?.jenjang ?? 'S1'} · {profile?.prodi ?? 'Teknik Informatika'}
-            </p>
+          <div className="border-t px-5 py-4 space-y-3">
+            <div>
+              <p className="truncate text-sm font-medium">
+                {profile?.nama ?? 'Mahasiswa'}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {profile?.jenjang ?? 'S1'} · {profile?.prodi ?? 'Teknik Informatika'}
+              </p>
+            </div>
+
+            <form action="/api/auth/logout" method="post">
+              <button
+                type="submit"
+                className="w-full rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-background hover:text-foreground"
+              >
+                Keluar
+              </button>
+            </form>
           </div>
         </aside>
 
