@@ -78,6 +78,8 @@ type DocumentItem = {
   created_at: string
 }
 
+type DocumentDetailTab = 'summary' | 'structure' | 'references' | 'gap'
+
 const DOCUMENT_TYPES = [
   { value: 'proposal', label: 'Proposal' },
   { value: 'skripsi', label: 'Skripsi / Tugas Akhir' },
@@ -96,6 +98,9 @@ export default function DocumentsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>()
   const [jenis, setJenis] = useState('proposal')
   const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null)
+  const [activeDocumentTabs, setActiveDocumentTabs] = useState<
+    Record<string, DocumentDetailTab>
+  >({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
@@ -582,9 +587,29 @@ export default function DocumentsPage() {
   }
 
   function toggleDocumentDetail(documentId: string) {
-    setExpandedDocumentId((current) =>
-      current === documentId ? null : documentId
-    )
+    setExpandedDocumentId((current) => {
+      const nextValue = current === documentId ? null : documentId
+
+      if (nextValue) {
+        setActiveDocumentTabs((prev) => ({
+          ...prev,
+          [documentId]: prev[documentId] ?? 'summary',
+        }))
+      }
+
+      return nextValue
+    })
+  }
+
+  function getActiveDocumentTab(documentId: string): DocumentDetailTab {
+    return activeDocumentTabs[documentId] ?? 'summary'
+  }
+
+  function setActiveDocumentTab(documentId: string, tab: DocumentDetailTab) {
+    setActiveDocumentTabs((prev) => ({
+      ...prev,
+      [documentId]: tab,
+    }))
   }
 
   function getChapterTitle(chapter: string | ChapterInfo) {
@@ -777,403 +802,429 @@ export default function DocumentsPage() {
 
                   {expandedDocumentId === doc.id && (
                     <div className="space-y-4">
-                      <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
-                        <p className="text-sm font-medium">Aksi Dokumen</p>
+                      <div className="rounded-xl border bg-muted/20 p-2">
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                          {[
+                            { key: 'summary', label: 'Ringkasan' },
+                            { key: 'structure', label: 'Struktur' },
+                            { key: 'references', label: 'Referensi' },
+                            { key: 'gap', label: 'Gap Analysis' },
+                          ].map((tab) => {
+                            const isActive = getActiveDocumentTab(doc.id) === tab.key
 
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleAnalyze(doc.id)}
-                            disabled={analyzingId === doc.id}
-                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
-                          >
-                            {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis Dokumen'}
-                          </button>
-
-                          <button
-                            onClick={() => handleSummarize(doc.id)}
-                            disabled={summarizingId === doc.id || doc.status !== 'parsed'}
-                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
-                          >
-                            {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
-                          </button>
-
-                          <button
-                            onClick={() => handleExtractKeywords(doc.id)}
-                            disabled={
-                              extractingKeywordsId === doc.id ||
-                              doc.status !== 'parsed' ||
-                              !doc.ai_summary
-                            }
-                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
-                          >
-                            {extractingKeywordsId === doc.id ? 'Ekstrak...' : 'Ekstrak Keyword'}
-                          </button>
-
-                          <button
-                            onClick={() => handleFindReferences(doc.id)}
-                            disabled={findingReferencesId === doc.id || !doc.research_query}
-                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
-                          >
-                            {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
-                          </button>
-
-                          <button
-                            onClick={() => handleAnalyzeReferenceGap(doc.id)}
-                            disabled={analyzingReferenceGapId === doc.id || doc.status !== 'parsed'}
-                            className="text-sm px-3 py-2 border rounded-lg hover:bg-background disabled:opacity-50"
-                          >
-                            {analyzingReferenceGapId === doc.id
-                              ? 'Menganalisis...'
-                              : 'Analisis Gap Referensi'}
-                          </button>
+                            return (
+                              <button
+                                key={tab.key}
+                                onClick={() =>
+                                  setActiveDocumentTab(doc.id, tab.key as DocumentDetailTab)
+                                }
+                                className={`rounded-lg px-3 py-2 text-sm transition ${
+                                  isActive
+                                    ? 'bg-background font-medium shadow-sm'
+                                    : 'text-muted-foreground hover:bg-background/60'
+                                }`}
+                              >
+                                {tab.label}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
 
-                      <div className="rounded-lg bg-muted/40 border p-4 space-y-3">
-                      <div className="grid gap-3 md:grid-cols-3 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Tipe Terdeteksi</p>
-                          <p className="font-medium">
-                            {doc.structure?.detected_type ?? '-'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-muted-foreground">Jumlah Kata</p>
-                          <p className="font-medium">
-                            {doc.structure?.word_count ?? 0}
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-muted-foreground">Struktur Ditemukan</p>
-                          <p className="font-medium">
-                            {doc.structure?.chapters?.length ?? 0} bagian
-                          </p>
-                        </div>
-                      </div>
-
-                      {doc.structure?.chapters && doc.structure?.chapters.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">Bagian terdeteksi:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {doc.structure?.chapters?.map((chapter) => {
-                              const title = getChapterTitle(chapter)
-                              const meta = getChapterMeta(chapter)
-
-                              return (
-                                <div
-                                  key={`${title}-${meta ?? ''}`}
-                                  className="text-xs px-3 py-2 rounded-lg border bg-background"
-                                >
-                                  <p className="font-medium">{title}</p>
-                                  {meta && (
-                                    <p className="text-muted-foreground mt-1">{meta}</p>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {doc.structure?.text_preview && (
-                        <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">Preview Teks:</p>
-                          <p className="text-sm leading-relaxed line-clamp-4">
-                            {doc.structure?.text_preview}
-                          </p>
-                        </div>
-                      )}
-
-                      {doc.structure?.quality && (
-                        <div className="space-y-2 border-t pt-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">Skor Kualitas Dokumen</p>
-                            <span className="text-sm font-semibold">
-                              {doc.structure?.quality.total ?? 0}/100
-                            </span>
-                          </div>
-
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${Math.min(doc.structure.quality.total ?? 0, 100)}%`,
-                              }}
-                            />
-                          </div>
-
-                          {doc.structure?.quality?.notes &&
-                            doc.structure?.quality?.notes.length > 0 && (
-                              <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                                {doc.structure?.quality?.notes.map((note) => (
-                                  <li key={note}>{note}</li>
-                                ))}
-                              </ul>
-                            )}
-                        </div>
-                      )}
-
-                      {doc.structure?.references && doc.structure?.references.length > 0 && (
-                        <div className="space-y-2 border-t pt-4">
-                          <p className="text-sm font-medium">
-                            Referensi Terdeteksi dari Dokumen:
-                          </p>
-
-                          <div className="space-y-2">
-                            {doc.structure?.references?.slice(0, 5).map((reference, index) => (
-                              <div
-                                key={`${reference}-${index}`}
-                                className="rounded-lg border bg-background p-3 text-sm text-muted-foreground"
+                      {getActiveDocumentTab(doc.id) === 'summary' && (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border bg-background p-4 space-y-3">
+                            <p className="text-sm font-medium">Aksi Dokumen</p>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => handleAnalyze(doc.id)}
+                                disabled={analyzingId === doc.id}
+                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
-                                {reference}
-                              </div>
-                            ))}
-                          </div>
-
-                          {doc.structure?.references && doc.structure?.references.length > 5 && (
-                            <p className="text-xs text-muted-foreground">
-                              +{doc.structure?.references.length - 5} referensi lainnya terdeteksi.
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {doc.structure?.keywords && doc.structure?.keywords.length > 0 && (
-                        <div className="space-y-2 border-t pt-4">
-                          <p className="text-sm font-medium">Keyword dari Parser:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {doc.structure?.keywords?.map((keyword) => (
-                              <span
-                                key={keyword}
-                                className="text-xs px-2 py-1 rounded-full border bg-background"
+                                {analyzingId === doc.id ? 'Menganalisis...' : 'Analisis Dokumen'}
+                              </button>
+                              <button
+                                onClick={() => handleSummarize(doc.id)}
+                                disabled={summarizingId === doc.id || doc.status !== 'parsed'}
+                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
                               >
-                                {keyword}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {doc.structure?.quality && (
-                        <div className="space-y-2 border-t pt-4">
-                          <div>
-                            <p className="text-sm font-medium">Kualitas Dokumen:</p>
-                            <div className="text-sm text-muted-foreground mt-2">
-                              <p>Skor: {doc.structure.quality.total}/5</p>
-                              <div className="grid grid-cols-2 gap-2 mt-2">
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_abstract ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure?.quality?.has_abstract ? '✓ Abstrak' : '✗ Abstrak'}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_chapters ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure?.quality?.has_chapters ? '✓ Struktur' : '✗ Struktur'}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_references ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure?.quality?.has_references ? '✓ Referensi' : '✗ Referensi'}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.has_methodology ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure?.quality?.has_methodology ? '✓ Metodologi' : '✗ Metodologi'}
-                                </span>
-                                <span className={`text-xs px-2 py-1 rounded ${doc.structure?.quality?.word_count_adequate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {doc.structure?.quality?.word_count_adequate ? '✓ Kata Cukup' : '✗ Kata Kurang'}
-                                </span>
-                              </div>
-                              {doc.structure?.quality?.notes && doc.structure?.quality?.notes.length > 0 && (
-                                <div className="mt-3">
-                                  <p className="text-xs font-medium text-amber-600">Catatan:</p>
-                                  <ul className="text-xs text-muted-foreground list-disc list-inside">
-                                    {doc.structure?.quality?.notes.map((note, i) => (
-                                      <li key={i}>{note}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {doc.ai_summary && (
-                        <div className="space-y-2 border-t pt-4">
-                          <p className="text-sm font-medium">Ringkasan AI:</p>
-                          <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                            {doc.ai_summary}
-                          </div>
-                        </div>
-                      )}
-
-                      {doc.research_keywords && doc.research_keywords.length > 0 && (
-                        <div className="space-y-3 border-t pt-4">
-                          <div>
-                            <p className="text-sm font-medium">Keyword Riset:</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {doc.research_keywords.map((keyword) => (
-                                <span
-                                  key={keyword}
-                                  className="text-xs px-2 py-1 rounded-full border bg-background"
-                                >
-                                  {keyword}
-                                </span>
-                              ))}
+                                {summarizingId === doc.id ? 'Meringkas...' : 'Ringkas dengan AI'}
+                              </button>
                             </div>
                           </div>
 
-                          {doc.research_query && (
-                            <div>
-                              <p className="text-sm font-medium">Query Referensi:</p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {doc.research_query}
+                          {doc.structure?.text_preview && (
+                            <div className="rounded-xl border bg-background p-4 space-y-2">
+                              <p className="text-sm font-medium">Preview Teks</p>
+                              <p className="text-sm leading-relaxed text-muted-foreground line-clamp-5">
+                                {doc.structure.text_preview}
                               </p>
                             </div>
                           )}
+
+                          {doc.ai_summary && (
+                            <div className="rounded-xl border bg-background p-4 space-y-2">
+                              <p className="text-sm font-medium">Ringkasan AI</p>
+                              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                                {doc.ai_summary}
+                              </div>
+                            </div>
+                          )}
+
+                          {doc.research_keywords && doc.research_keywords.length > 0 && (
+                            <div className="rounded-xl border bg-background p-4 space-y-3">
+                              <div>
+                                <p className="text-sm font-medium">Keyword Riset</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Keyword yang diekstrak untuk pencarian referensi.
+                                </p>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                {doc.research_keywords.map((keyword) => (
+                                  <span
+                                    key={keyword}
+                                    className="text-xs px-2 py-1 rounded-full border bg-muted/40"
+                                  >
+                                    {keyword}
+                                  </span>
+                                ))}
+                              </div>
+
+                              {doc.research_query && (
+                                <div>
+                                  <p className="text-xs font-medium">Query Referensi</p>
+                                  <p className="mt-1 text-sm text-muted-foreground">
+                                    {doc.research_query}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {recommendedReferences[doc.id] && (
-                        <div className="space-y-3 border-t pt-4">
-                          <div>
-                            <p className="text-sm font-medium">Rekomendasi Referensi:</p>
-                            <p className="text-xs text-muted-foreground">
-                              Berdasarkan keyword dan query dari dokumen ini.
-                            </p>
+                      {getActiveDocumentTab(doc.id) === 'structure' && doc.structure && (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border bg-background p-4 space-y-4">
+                            <div className="grid gap-3 md:grid-cols-3 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Tipe Terdeteksi</p>
+                                <p className="font-medium">
+                                  {doc.structure.detected_type ?? '-'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-muted-foreground">Jumlah Kata</p>
+                                <p className="font-medium">{doc.structure.word_count ?? 0}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-muted-foreground">Struktur Ditemukan</p>
+                                <p className="font-medium">
+                                  {doc.structure.chapters?.length ?? 0} bagian
+                                </p>
+                              </div>
+                            </div>
+
+                            {doc.structure.chapters && doc.structure.chapters.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">Bagian terdeteksi:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {doc.structure.chapters.map((chapter, index) => {
+                                    const title = getChapterTitle(chapter)
+                                    const meta = getChapterMeta(chapter)
+
+                                    return (
+                                      <div
+                                        key={`${title}-${index}`}
+                                        className="text-xs px-3 py-2 rounded-lg border bg-muted/30"
+                                      >
+                                        <p className="font-medium">{title}</p>
+                                        {meta && (
+                                          <p className="text-muted-foreground mt-1">{meta}</p>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          {recommendedReferences[doc.id].length === 0 ? (
-                            <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                              Belum ada referensi yang cocok dari OpenAlex untuk query ini.
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {recommendedReferences[doc.id].map((ref) => (
+                          {doc.structure.quality && (
+                            <div className="rounded-xl border bg-background p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">Skor Kualitas Dokumen</p>
+                                <span className="text-sm font-semibold">
+                                  {doc.structure.quality.total ?? 0}/100
+                                </span>
+                              </div>
+
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
                                 <div
-                                  key={ref.openalex_id}
-                                  className="rounded-lg border bg-background p-4 space-y-2"
-                                >
-                                  <div className="space-y-1">
-                                    <p className="font-medium text-sm leading-relaxed">
-                                      {ref.title}
-                                    </p>
+                                  className="h-full bg-primary"
+                                  style={{
+                                    width: `${Math.min(doc.structure.quality.total ?? 0, 100)}%`,
+                                  }}
+                                />
+                              </div>
 
-                                    <p className="text-xs text-muted-foreground">
-                                      {ref.authors.length > 0
-                                        ? ref.authors.join(', ')
-                                        : 'Author tidak tersedia'}
-                                      {ref.year ? ` · ${ref.year}` : ''}
-                                    </p>
+                              {doc.structure.quality.notes &&
+                                doc.structure.quality.notes.length > 0 && (
+                                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                                    {doc.structure.quality.notes.map((note) => (
+                                      <li key={note}>{note}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                            </div>
+                          )}
 
-                                    <p className="text-xs text-muted-foreground">
-                                      {ref.journal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
-                                      {ref.cited_by_count}
-                                    </p>
+                          {doc.structure.keywords && doc.structure.keywords.length > 0 && (
+                            <div className="rounded-xl border bg-background p-4 space-y-2">
+                              <p className="text-sm font-medium">Keyword dari Parser</p>
+                              <div className="flex flex-wrap gap-2">
+                                {doc.structure.keywords.map((keyword) => (
+                                  <span
+                                    key={keyword}
+                                    className="text-xs px-2 py-1 rounded-full border bg-muted/40"
+                                  >
+                                    {keyword}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {doc.structure.references && doc.structure.references.length > 0 && (
+                            <div className="rounded-xl border bg-background p-4 space-y-3">
+                              <p className="text-sm font-medium">
+                                Referensi Terdeteksi dari Dokumen
+                              </p>
+
+                              <div className="space-y-2">
+                                {doc.structure.references.slice(0, 5).map((reference, index) => (
+                                  <div
+                                    key={`${reference}-${index}`}
+                                    className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground"
+                                  >
+                                    {reference}
                                   </div>
+                                ))}
+                              </div>
 
-                                  {ref.abstract && (
-                                    <p className="text-sm text-muted-foreground line-clamp-3">
-                                      {ref.abstract}
-                                    </p>
-                                  )}
+                              {doc.structure.references.length > 5 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{doc.structure.references.length - 5} referensi lainnya
+                                  terdeteksi.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                      {getActiveDocumentTab(doc.id) === 'references' && (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border bg-background p-4 space-y-3">
+                            <p className="text-sm font-medium">Aksi Referensi</p>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => handleExtractKeywords(doc.id)}
+                                disabled={
+                                  extractingKeywordsId === doc.id ||
+                                  doc.status !== 'parsed' ||
+                                  !doc.ai_summary
+                                }
+                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                              >
+                                {extractingKeywordsId === doc.id
+                                  ? 'Ekstrak...'
+                                  : 'Ekstrak Keyword'}
+                              </button>
+
+                              <button
+                                onClick={() => handleFindReferences(doc.id)}
+                                disabled={findingReferencesId === doc.id || !doc.research_query}
+                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                              >
+                                {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
+                              </button>
+
+                              <button
+                                onClick={() => handleAnalyzeReferenceGap(doc.id)}
+                                disabled={
+                                  analyzingReferenceGapId === doc.id ||
+                                  doc.status !== 'parsed'
+                                }
+                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                              >
+                                {analyzingReferenceGapId === doc.id
+                                  ? 'Menganalisis...'
+                                  : 'Analisis Gap Referensi'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {recommendedReferences[doc.id] && (
+                            <div className="space-y-3 border-t pt-4">
+                              <div>
+                                <p className="text-sm font-medium">Rekomendasi Referensi:</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Berdasarkan keyword dan query dari dokumen ini.
+                                </p>
+                              </div>
+
+                              {recommendedReferences[doc.id].length === 0 ? (
+                                <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                                  Belum ada referensi yang cocok dari OpenAlex untuk query ini.
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {recommendedReferences[doc.id].map((ref) => (
+                                    <div
+                                      key={ref.openalex_id}
+                                      className="rounded-lg border bg-background p-4 space-y-2"
+                                    >
+                                      <div className="space-y-1">
+                                        <p className="font-medium text-sm leading-relaxed">
+                                          {ref.title}
+                                        </p>
+
+                                        <p className="text-xs text-muted-foreground">
+                                          {ref.authors.length > 0
+                                            ? ref.authors.join(', ')
+                                            : 'Author tidak tersedia'}
+                                          {ref.year ? ` · ${ref.year}` : ''}
+                                        </p>
+
+                                        <p className="text-xs text-muted-foreground">
+                                          {ref.journal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
+                                          {ref.cited_by_count}
+                                        </p>
+                                      </div>
+
+                                      {ref.abstract && (
+                                        <p className="text-sm text-muted-foreground line-clamp-3">
+                                          {ref.abstract}
+                                        </p>
+                                      )}
+
+                                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                                        {ref.url && (
+                                          <a
+                                            href={ref.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-sm text-primary hover:underline"
+                                          >
+                                            Buka referensi →
+                                          </a>
+                                        )}
+
+                                        <button
+                                          onClick={() => handleSaveReference(doc.id, ref)}
+                                          disabled={
+                                            savingReferenceId === `${doc.id}-${ref.openalex_id}`
+                                          }
+                                          className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                        >
+                                          {savingReferenceId === `${doc.id}-${ref.openalex_id}`
+                                            ? 'Menyimpan...'
+                                            : 'Simpan Referensi'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {savedReferences[doc.id] && savedReferences[doc.id].length > 0 && (
+                            <div className="space-y-3 border-t pt-4">
+                              <div>
+                                <p className="text-sm font-medium">Referensi Tersimpan:</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Referensi yang sudah kamu simpan untuk dokumen ini.
+                                </p>
+                              </div>
+
+                              <div className="space-y-3">
+                                {savedReferences[doc.id].map((ref) => (
+                                  <div
+                                    key={ref.id}
+                                    className="rounded-lg border bg-background p-4 space-y-2"
+                                  >
+                                    <div className="space-y-1">
+                                      <p className="font-medium text-sm leading-relaxed">
+                                        {ref.judul}
+                                      </p>
+
+                                      <p className="text-xs text-muted-foreground">
+                                        {ref.penulis && ref.penulis.length > 0
+                                          ? ref.penulis.join(', ')
+                                          : 'Author tidak tersedia'}
+                                        {ref.tahun ? ` · ${ref.tahun}` : ''}
+                                      </p>
+
+                                      <p className="text-xs text-muted-foreground">
+                                        {ref.jurnal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
+                                        {ref.sitasi_count ?? 0}
+                                      </p>
+                                    </div>
+
+                                    {ref.abstrak && (
+                                      <p className="text-sm text-muted-foreground line-clamp-3">
+                                        {ref.abstrak}
+                                      </p>
+                                    )}
+
                                     {ref.url && (
                                       <a
                                         href={ref.url}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-sm text-primary hover:underline"
+                                        className="inline-block text-sm text-primary hover:underline"
                                       >
                                         Buka referensi →
                                       </a>
                                     )}
-
-                                    <button
-                                      onClick={() => handleSaveReference(doc.id, ref)}
-                                      disabled={savingReferenceId === `${doc.id}-${ref.openalex_id}`}
-                                      className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                                    >
-                                      {savingReferenceId === `${doc.id}-${ref.openalex_id}`
-                                        ? 'Menyimpan...'
-                                        : 'Simpan Referensi'}
-                                    </button>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
                       )}
 
-                      {savedReferences[doc.id] && savedReferences[doc.id].length > 0 && (
-                        <div className="space-y-3 border-t pt-4">
-                          <div>
-                            <p className="text-sm font-medium">Referensi Tersimpan:</p>
-                            <p className="text-xs text-muted-foreground">
-                              Referensi yang sudah kamu simpan untuk dokumen ini.
-                            </p>
-                          </div>
+                      {getActiveDocumentTab(doc.id) === 'gap' && (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border bg-background p-4 space-y-3">
+                            <div>
+                              <p className="text-sm font-medium">Analisis Gap Referensi</p>
+                              <p className="text-xs text-muted-foreground">
+                                Evaluasi AI terhadap kecukupan referensi yang kamu simpan.
+                              </p>
+                            </div>
 
-                          <div className="space-y-3">
-                            {savedReferences[doc.id].map((ref) => (
-                              <div
-                                key={ref.id}
-                                className="rounded-lg border bg-background p-4 space-y-2"
-                              >
-                                <div className="space-y-1">
-                                  <p className="font-medium text-sm leading-relaxed">
-                                    {ref.judul}
-                                  </p>
-
-                                  <p className="text-xs text-muted-foreground">
-                                    {ref.penulis && ref.penulis.length > 0
-                                      ? ref.penulis.join(', ')
-                                      : 'Author tidak tersedia'}
-                                    {ref.tahun ? ` · ${ref.tahun}` : ''}
-                                  </p>
-
-                                  <p className="text-xs text-muted-foreground">
-                                    {ref.jurnal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
-                                    {ref.sitasi_count ?? 0}
-                                  </p>
-                                </div>
-
-                                {ref.abstrak && (
-                                  <p className="text-sm text-muted-foreground line-clamp-3">
-                                    {ref.abstrak}
-                                  </p>
-                                )}
-
-                                {ref.url && (
-                                  <a
-                                    href={ref.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-block text-sm text-primary hover:underline"
-                                  >
-                                    Buka referensi →
-                                  </a>
-                                )}
+                            {doc.reference_gap_analysis ? (
+                              <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                                {doc.reference_gap_analysis}
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {doc.reference_gap_analysis && (
-                        <div className="space-y-3 border-t pt-4">
-                          <div>
-                            <p className="text-sm font-medium">Analisis Gap Referensi:</p>
-                            <p className="text-xs text-muted-foreground">
-                              Evaluasi AI terhadap kecukupan referensi yang kamu simpan.
-                            </p>
-                          </div>
-
-                          <div className="whitespace-pre-wrap rounded-lg border bg-background p-4 text-sm leading-relaxed text-muted-foreground">
-                            {doc.reference_gap_analysis}
+                            ) : (
+                              <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
+                                Belum ada analisis gap referensi. Buka tab Referensi lalu klik
+                                Analisis Gap Referensi.
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
                     </div>
-                  </div>
                   )}
                 </div>
               ))}
