@@ -73,6 +73,8 @@ type DocumentItem = {
   ai_summary: string | null
   research_keywords: string[] | null
   research_query: string | null
+  reference_gap_analysis: string | null
+  reference_gap_updated_at: string | null
   created_at: string
 }
 
@@ -106,51 +108,52 @@ export default function DocumentsPage() {
   const [savedReferences, setSavedReferences] = useState<
     Record<string, SavedReference[]>
   >({})
+  const [analyzingReferenceGapId, setAnalyzingReferenceGapId] = useState<
+    string | null
+  >(null)
   const [savingReferenceId, setSavingReferenceId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   const fetchSavedReferences = useCallback(
-  async (documentIds: string[]) => {
-    if (documentIds.length === 0) {
-      setSavedReferences({})
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('paper_references')
-      .select(
-        'id, document_id, openalex_id, judul, penulis, tahun, jurnal, doi, url, abstrak, sitasi_count, is_open_access, created_at'
-      )
-      .in('document_id', documentIds)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Gagal mengambil referensi tersimpan:', error.message)
-      return
-    }
-
-    const grouped: Record<string, SavedReference[]> = {}
-
-    for (const reference of data ?? []) {
-      if (!grouped[reference.document_id]) {
-        grouped[reference.document_id] = []
+    async (documentIds: string[]) => {
+      if (documentIds.length === 0) {
+        setSavedReferences({})
+        return
       }
 
-      grouped[reference.document_id].push(reference)
-    }
+      const { data, error } = await supabase
+        .from('paper_references')
+        .select('*')
+        .in('document_id', documentIds)
+        .order('created_at', { ascending: false })
 
-    setSavedReferences(grouped)
-  },
-  [supabase]
-)
+      if (error) {
+        console.error('Gagal mengambil referensi tersimpan:', error.message)
+        return
+      }
+
+      const grouped: Record<string, SavedReference[]> = {}
+
+      for (const reference of data ?? []) {
+        if (!grouped[reference.document_id]) {
+          grouped[reference.document_id] = []
+        }
+
+        grouped[reference.document_id].push(reference)
+      }
+
+      setSavedReferences(grouped)
+    },
+    [supabase]
+  )
 
   const fetchDocuments = useCallback(
     async (currentUserId: string) => {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, reference_gap_analysis, reference_gap_updated_at, created_at'
         )
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: false })
@@ -189,7 +192,7 @@ export default function DocumentsPage() {
       const { data, error } = await supabase
         .from('documents')
         .select(
-          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, created_at'
+          'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, reference_gap_analysis, reference_gap_updated_at, created_at'
         )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -200,6 +203,9 @@ export default function DocumentsPage() {
         setError('Gagal mengambil dokumen: ' + error.message)
       } else {
         setDocuments(data ?? [])
+
+        const documentIds = (data ?? []).map((doc) => doc.id)
+        await fetchSavedReferences(documentIds)
       }
 
       setLoading(false)
@@ -210,7 +216,7 @@ export default function DocumentsPage() {
     return () => {
       isMounted = false
     }
-  }, [router, supabase])
+  }, [router, supabase, fetchSavedReferences])
 
   function handleFileChange(file: File | null) {
     setError('')
@@ -521,6 +527,38 @@ export default function DocumentsPage() {
     setSavingReferenceId(null)
   }
 
+  async function handleAnalyzeReferenceGap(documentId: string) {
+    setAnalyzingReferenceGapId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/reference-gap', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result.error ?? 'Gagal menganalisis gap referensi')
+      setAnalyzingReferenceGapId(null)
+      return
+    }
+
+    setSuccess('Analisis gap referensi berhasil dibuat.')
+
+    if (userId) {
+      await fetchDocuments(userId)
+    }
+
+    setAnalyzingReferenceGapId(null)
+  }
+
   function formatFileSize(size: number | null) {
     if (!size) return '-'
 
@@ -708,6 +746,24 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                       </button>
 
                       <button
+                        onClick={() => handleFindReferences(doc.id)}
+                        disabled={findingReferencesId === doc.id}
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                      >
+                        {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
+                      </button>
+
+                      <button
+                        onClick={() => handleAnalyzeReferenceGap(doc.id)}
+                        disabled={analyzingReferenceGapId === doc.id || doc.status !== 'parsed'}
+                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                      >
+                        {analyzingReferenceGapId === doc.id
+                          ? 'Menganalisis...'
+                          : 'Analisis Gap Referensi'}
+                      </button>
+
+                      <button
                         onClick={() => handleSummarize(doc.id)}
                         disabled={summarizingId === doc.id || doc.status !== 'parsed'}
                         className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
@@ -727,17 +783,7 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                         {extractingKeywordsId === doc.id ? 'Ekstrak...' : 'Ekstrak Keyword'}
                       </button>
 
-                      <button
-                        onClick={() => handleFindReferences(doc.id)}
-                        disabled={
-                          findingReferencesId === doc.id ||
-                          !doc.research_query
-                        }
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
-                      >
-                        {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Referensi'}
-                      </button>
-
+                      
                       <button
                         onClick={() => handleStartGuidance(doc.id)}
                         disabled={
@@ -1078,6 +1124,21 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                                 )}
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {doc.reference_gap_analysis && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div>
+                            <p className="text-sm font-medium">Analisis Gap Referensi:</p>
+                            <p className="text-xs text-muted-foreground">
+                              Evaluasi AI terhadap kecukupan referensi yang kamu simpan.
+                            </p>
+                          </div>
+
+                          <div className="whitespace-pre-wrap rounded-lg border bg-background p-4 text-sm leading-relaxed text-muted-foreground">
+                            {doc.reference_gap_analysis}
                           </div>
                         </div>
                       )}
