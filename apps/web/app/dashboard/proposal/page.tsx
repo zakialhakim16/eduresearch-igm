@@ -196,7 +196,7 @@ export default function ProposalPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background md:h-screen">
       <header className="border-b px-4 py-3">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div>
@@ -214,8 +214,8 @@ export default function ProposalPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4">
-        <div className="mx-auto max-w-3xl py-8 space-y-6">
+      <main className="flex-1 overflow-y-auto px-3 md:px-4">
+        <div className="mx-auto max-w-3xl py-5 md:py-8 space-y-5 md:space-y-6">
           {messages.map((message, index) => {
             const isUser = message.role === 'user'
 
@@ -225,7 +225,7 @@ export default function ProposalPage() {
                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[92%] md:max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                     isUser
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-foreground'
@@ -257,7 +257,7 @@ export default function ProposalPage() {
         </div>
       </main>
 
-      <footer className="border-t bg-background px-4 py-4">
+      <footer className="border-t bg-background px-3 py-3 md:px-4 md:py-4 pb-24 md:pb-4">
         <div className="mx-auto max-w-3xl space-y-3">
           <form onSubmit={handleSubmit} className="relative">
             <textarea
@@ -271,13 +271,13 @@ export default function ProposalPage() {
                   e.currentTarget.form?.requestSubmit()
                 }
               }}
-              className="min-h-[52px] w-full resize-none rounded-2xl border bg-background px-4 py-3 pr-24 text-sm outline-none focus:ring-2 focus:ring-primary"
+              className="min-h-[52px] max-h-40 w-full resize-none rounded-2xl border bg-background px-4 py-3 pr-20 md:pr-24 text-sm outline-none focus:ring-2 focus:ring-primary"
             />
 
             <button
               type="submit"
               disabled={!input.trim() || isStreaming}
-              className="absolute bottom-2 right-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              className="absolute bottom-2 right-2 rounded-xl bg-primary px-3 py-2 md:px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
             >
               {isStreaming ? '...' : 'Kirim'}
             </button>
