@@ -33,9 +33,8 @@ export default async function DashboardPage() {
     .from('sessions')
     .select('id, modul, status, created_at, document_id')
     .eq('user_id', user?.id)
-    .not('document_id', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(3)
+    .limit(5)
 
   const firstName = profile?.nama?.split(' ')[0] ?? 'Mahasiswa'
 
@@ -160,7 +159,9 @@ export default async function DashboardPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-medium text-sm">
-                        Sesi {session.modul}
+                        {session.document_id
+                          ? `Sesi ${session.modul}`
+                          : 'Bimbingan Baru'}
                       </p>
 
                       <span className="text-xs rounded-full bg-muted px-2 py-1">

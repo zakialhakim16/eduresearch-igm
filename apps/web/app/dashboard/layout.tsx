@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { DashboardBottomNav } from '@/components/dashboard-bottom-nav'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type DashboardLayoutProps = {
@@ -53,13 +54,12 @@ export default async function DashboardLayout({
       )
     `)
     .eq('user_id', user.id)
-    .not('document_id', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(8)
+    .limit(12)
 
   const uniqueRecentSessions = recentSessions
     ? recentSessions.filter((session, index, self) => {
-        if (!session.document_id) return false
+        if (!session.document_id) return true
 
         return (
           index ===
@@ -69,58 +69,62 @@ export default async function DashboardLayout({
     : []
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="dashboard-app-bg min-h-screen text-foreground">
       <div className="flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r bg-muted/30 md:flex md:flex-col">
-          <div className="border-b px-5 py-4">
-            <Link href="/dashboard" className="block">
-              <h1 className="font-bold text-lg">EduResearch AI</h1>
-              <p className="text-xs text-muted-foreground">
-                Mentor riset akademik
-              </p>
+        <aside className="sidebar-glass hidden w-72 shrink-0 border-r md:flex md:flex-col">
+          <div className="border-b border-border/60 px-5 py-5">
+            <Link href="/dashboard" className="group block">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-sm font-bold text-primary-foreground shadow-md shadow-primary/25">
+                  ER
+                </div>
+                <div>
+                  <h1 className="font-semibold tracking-tight text-foreground">
+                    EduResearch AI
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    Mentor riset akademik
+                  </p>
+                </div>
+              </div>
             </Link>
           </div>
 
           <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
             <div className="space-y-2">
-              <Link
-                href="/dashboard/proposal"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
-              >
-                <span>✍️</span>
+              <Link href="/dashboard/proposal" className="nav-link-dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-base shadow-sm dark:bg-background/50">
+                  ✍️
+                </span>
                 <span>Bimbingan Baru</span>
               </Link>
 
-              <Link
-                href="/dashboard/documents"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
-              >
-                <span>📁</span>
+              <Link href="/dashboard/documents" className="nav-link-dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-base shadow-sm dark:bg-background/50">
+                  📁
+                </span>
                 <span>Dokumen Saya</span>
               </Link>
 
-              <Link
-                href="/dashboard/references"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
-              >
-                <span>🔍</span>
+              <Link href="/dashboard/references" className="nav-link-dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-base shadow-sm dark:bg-background/50">
+                  🔍
+                </span>
                 <span>Cari Referensi</span>
               </Link>
 
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
-              >
-                <span>🏠</span>
+              <Link href="/dashboard" className="nav-link-dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-base shadow-sm dark:bg-background/50">
+                  🏠
+                </span>
                 <span>Dashboard</span>
               </Link>
 
-              <Link
-                href="/dashboard/settings"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-background"
-              >
-                <span>⚙️</span>
-                <span>Settings</span>
+              <Link href="/dashboard/settings" className="nav-link-dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-base shadow-sm dark:bg-background/50">
+                  ⚙️
+                </span>
+                <span>Pengaturan</span>
               </Link>
             </div>
 
@@ -131,7 +135,7 @@ export default async function DashboardLayout({
 
               {uniqueRecentSessions.length === 0 ? (
                 <div className="rounded-lg px-3 py-3 text-xs text-muted-foreground">
-                  Belum ada sesi berbasis dokumen.
+                  Belum ada riwayat bimbingan.
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -144,7 +148,7 @@ export default async function DashboardLayout({
                       <Link
                         key={session.id}
                         href={getSessionUrl(session.modul, session.id)}
-                        className="block rounded-lg px-3 py-2 text-sm hover:bg-background"
+                        className="block rounded-xl border border-transparent px-3 py-2.5 text-sm transition-all hover:border-border hover:bg-background hover:shadow-sm"
                       >
                         <p className="truncate font-medium">
                           {document?.nama_file ?? 'Sesi Bimbingan'}
@@ -160,8 +164,8 @@ export default async function DashboardLayout({
             </div>
           </div>
 
-          <div className="border-t px-5 py-4 space-y-3">
-            <div>
+          <div className="border-t border-border/60 px-5 py-4 space-y-3">
+            <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-3 dark:bg-background/40">
               <p className="truncate text-sm font-medium">
                 {profile?.nama ?? 'Mahasiswa'}
               </p>
@@ -173,7 +177,7 @@ export default async function DashboardLayout({
             <form action="/api/auth/logout" method="post">
               <button
                 type="submit"
-                className="w-full rounded-lg border px-3 py-2 text-sm text-muted-foreground hover:bg-background hover:text-foreground"
+                className="w-full rounded-xl border border-border/80 bg-background/80 px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/5 hover:text-foreground"
               >
                 Keluar
               </button>
@@ -182,15 +186,33 @@ export default async function DashboardLayout({
         </aside>
 
         <main className="flex min-h-screen flex-1 flex-col pb-20 md:pb-0">
-          <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
-            <Link href="/dashboard">
-              <p className="font-bold">EduResearch AI</p>
+          <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl md:hidden">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground shadow-sm">
+                ER
+              </span>
+              <span className="font-semibold tracking-tight">EduResearch</span>
             </Link>
 
-            <div className="flex items-center gap-3 text-sm">
-              <Link href="/dashboard/documents">Dokumen</Link>
-              <Link href="/dashboard/proposal">Chat</Link>
-              <Link href="/dashboard/settings">Akun</Link>
+            <div className="flex items-center gap-2 text-xs font-medium sm:text-sm">
+              <Link
+                href="/dashboard/documents"
+                className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Dokumen
+              </Link>
+              <Link
+                href="/dashboard/proposal"
+                className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Chat
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Akun
+              </Link>
             </div>
           </header>
 
@@ -200,49 +222,7 @@ export default async function DashboardLayout({
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
-          >
-            <span className="text-lg">🏠</span>
-            <span>Home</span>
-          </Link>
-
-          <Link
-            href="/dashboard/proposal"
-            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
-          >
-            <span className="text-lg">✍️</span>
-            <span>Chat</span>
-          </Link>
-
-          <Link
-            href="/dashboard/documents"
-            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
-          >
-            <span className="text-lg">📁</span>
-            <span>Dokumen</span>
-          </Link>
-
-          <Link
-            href="/dashboard/references"
-            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
-          >
-            <span className="text-lg">🔍</span>
-            <span>Referensi</span>
-          </Link>
-
-          <Link
-            href="/dashboard/settings"
-            className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-muted-foreground hover:text-foreground sm:text-xs"
-          >
-            <span className="text-lg">⚙️</span>
-            <span>Setelan</span>
-          </Link>
-        </div>
-      </nav>
+      <DashboardBottomNav />
     </div>
   )
 }

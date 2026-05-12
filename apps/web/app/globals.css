@@ -129,3 +129,101 @@
     @apply font-sans;
   }
 }
+
+/* Ekosistem UI: permukaan dashboard + ambient halus (tanpa mengubah token tema utama) */
+@layer utilities {
+  .dashboard-app-bg {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(
+        ellipse 120% 80% at 100% -20%,
+        oklch(0.55 0.12 250 / 0.08),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 90% 60% at -10% 50%,
+        oklch(0.65 0.14 160 / 0.06),
+        transparent 45%
+      );
+  }
+
+  .dark .dashboard-app-bg {
+    background-image:
+      radial-gradient(
+        ellipse 120% 80% at 100% -20%,
+        oklch(0.55 0.2 260 / 0.12),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 90% 60% at -10% 60%,
+        oklch(0.45 0.08 180 / 0.08),
+        transparent 45%
+      );
+  }
+
+  .ai-chat-surface {
+    background-image:
+      radial-gradient(
+        ellipse 100% 80% at 50% -40%,
+        oklch(0.55 0.12 250 / 0.06),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 80% 50% at 100% 100%,
+        oklch(0.6 0.1 200 / 0.05),
+        transparent 50%
+      );
+  }
+
+  .dark .ai-chat-surface {
+    background-image:
+      radial-gradient(
+        ellipse 100% 80% at 50% -40%,
+        oklch(0.55 0.18 260 / 0.15),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 80% 50% at 100% 100%,
+        oklch(0.5 0.12 240 / 0.1),
+        transparent 50%
+      );
+  }
+
+  .sidebar-glass {
+    @apply border-border/60 bg-muted/40 backdrop-blur-xl dark:bg-muted/20;
+  }
+
+  .nav-link-dashboard {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:bg-background hover:text-foreground hover:shadow-sm dark:hover:bg-background/80;
+  }
+
+  .typing-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.7 0 0 / 0.15) 0%,
+      oklch(0.7 0 0 / 0.35) 50%,
+      oklch(0.7 0 0 / 0.15) 100%
+    );
+    background-size: 200% 100%;
+    animation: typing-shimmer 1.2s ease-in-out infinite;
+  }
+
+  .dark .typing-shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(1 0 0 / 0.06) 0%,
+      oklch(1 0 0 / 0.14) 50%,
+      oklch(1 0 0 / 0.06) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  @keyframes typing-shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+}

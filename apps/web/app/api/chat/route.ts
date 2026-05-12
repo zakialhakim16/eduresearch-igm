@@ -11,7 +11,7 @@ type ChatMessage = {
 type ChatRequestBody = {
   messages: ChatMessage[]
   step?: string
-  sessionId?: string
+  sessionId?: string | null
 }
 
 type ChapterInfo = {
@@ -51,8 +51,12 @@ type SavedReference = {
 const CHAT_BEHAVIOR_GUARD = `
 ATURAN GLOBAL WAJIB:
 - Selalu jawab dalam Bahasa Indonesia.
+- Gunakan sapaan "kamu", bukan "Anda".
 - Jangan pernah menggunakan Bahasa Mandarin, Chinese, Hanzi, atau bahasa lain selain Bahasa Indonesia.
-- Istilah teknis bahasa Inggris seperti Support Vector Machine, feature selection, phishing, dataset, dan cross validation boleh digunakan.
+- Istilah teknis bahasa Inggris seperti Support Vector Machine, feature selection, phishing, dataset, dan cross validation boleh digunakan jika relevan dengan dokumen atau pertanyaan user.
+- Gunakan format Markdown yang rapi agar mudah dibaca (heading singkat, daftar bernomor atau bullet jika perlu).
+- Untuk jawaban panjang, gunakan heading singkat seperti "Langkah Awal", "Pertanyaan Kunci", atau "Saran Berikutnya".
+- Jangan terlalu banyak memakai bold; jangan menampilkan simbol markdown berlebihan.
 - Jika user meminta evaluasi seperti "mana yang paling cocok", "referensi mana", "bagian mana", atau "apa yang harus diperkuat", berikan evaluasi langsung terlebih dahulu.
 - Jangan hanya membalas dengan daftar pertanyaan.
 - Format jawaban untuk evaluasi referensi:
@@ -65,15 +69,36 @@ ATURAN GLOBAL WAJIB:
 - Jangan mengarang isi paper di luar judul, abstrak, metadata, dan konteks yang tersedia.
 - Jangan membuat sitasi palsu.
 - Jika user bertanya "referensi mana yang cocok", berikan evaluasi langsung, bukan hanya pertanyaan.
-- Untuk setiap referensi, nilai apakah cocok untuk:
-  1. latar belakang,
-  2. metode,
-  3. pembahasan,
-  4. atau hanya konteks umum.
-- Jika referensi kurang cocok untuk metode ini, jelaskan bahwa referensi tersebut kurang spesifik.
-- Untuk dokumen user ini, metode inti adalah SVM, Chi-Square feature selection, phishing website detection, dataset Kaggle, dan Stratified K-Fold Cross Validation.
-- Referensi yang paling cocok untuk metode adalah referensi yang membahas langsung machine learning classification, phishing detection, feature selection, SVM, atau evaluasi model.
+- Untuk setiap referensi, nilai apakah cocok untuk latar belakang, metode, pembahasan, atau hanya konteks umum.
+- Jika referensi kurang cocok untuk metode yang dibahas user, jelaskan dengan sopan.
 - Setelah evaluasi, ajukan maksimal 2 pertanyaan Socratic lanjutan.
+- Kaitkan saran dengan konteks dokumen dan referensi yang diberikan sistem jika ada.
+`.trim()
+
+const CHAT_BEHAVIOR_GUARD_GENERAL = `
+ATURAN GLOBAL WAJIB:
+- Selalu jawab dalam Bahasa Indonesia.
+- Gunakan sapaan "kamu", bukan "Anda".
+- Jangan pernah menggunakan Bahasa Mandarin, Chinese, Hanzi, atau bahasa lain selain Bahasa Indonesia.
+- Istilah teknis bahasa Inggris boleh dipakai jika relevan dengan apa yang user sebutkan.
+- Gunakan format Markdown yang rapi agar mudah dibaca.
+- Untuk jawaban panjang, gunakan heading singkat.
+- Jangan terlalu banyak memakai bold.
+- Jika user meminta evaluasi, berikan evaluasi langsung terlebih dahulu.
+- Jangan hanya membalas dengan daftar pertanyaan.
+- Jika user meminta rekomendasi judul tetapi belum menyebut minat, tanyakan dulu bidang minat, jenis penelitian, dan masalah yang ingin diselesaikan.
+`.trim()
+
+const NEW_GUIDANCE_GUARD = `
+MODE BIMBINGAN BARU:
+- Ini adalah sesi baru tanpa dokumen.
+- Jangan gunakan konteks dokumen lama.
+- Jangan gunakan referensi lama.
+- Jangan menyebut topik spesifik seperti SVM, phishing, Chi-Square, fintech, atau dataset Kaggle kecuali user menyebutnya sendiri.
+- Jika user meminta rekomendasi judul skripsi tapi belum menyebut bidang minat, jangan langsung memberi judul final.
+- Tanyakan dulu minat bidang, jenis penelitian, masalah yang ingin diselesaikan, dan preferensi metode.
+- Jika ingin memberi contoh, berikan contoh yang beragam dari beberapa bidang, bukan hanya satu topik.
+- Gunakan sapaan "kamu", bukan "Anda".
 `.trim()
 
 function getLastUserMessage(messages: ChatMessage[]) {
@@ -275,9 +300,9 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = [
       baseSystemPrompt,
-      documentContext,
-      savedReferencesContext,
-      CHAT_BEHAVIOR_GUARD,
+      sessionId ? documentContext : NEW_GUIDANCE_GUARD,
+      sessionId ? savedReferencesContext : '',
+      sessionId ? CHAT_BEHAVIOR_GUARD : CHAT_BEHAVIOR_GUARD_GENERAL,
     ]
       .filter(Boolean)
       .join('\n\n')

@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { createClient } from '@/lib/supabase'
 
 type ChatMessage = {
@@ -15,35 +17,117 @@ Mari kita mulai dengan mengeksplorasi topik penelitianmu.
 
 Ceritakan dulu — bidang apa yang paling menarik perhatianmu belakangan ini? Tidak perlu langsung spesifik, cukup ceritakan minat, keresahan, atau masalah yang sering kamu lihat.`
 
-export default function ProposalPage() {
-  const searchParams = useSearchParams()
-  const sessionId = searchParams.get('session_id')
-  const supabase = useMemo(() => createClient(), [])
-
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
-
-  const [messages, setMessages] = useState<ChatMessage[]>([
+function getDefaultMessages(): ChatMessage[] {
+  return [
     {
       role: 'assistant',
       content: DEFAULT_PROPOSAL_MESSAGE,
     },
-  ])
+  ]
+}
+
+function AssistantMarkdown({ content }: { content: string }) {
+  return (
+    <div className="space-y-3 [&_a]:text-primary [&_a]:underline">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="text-lg font-semibold leading-relaxed">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-base font-semibold leading-relaxed">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-sm font-semibold leading-relaxed">
+              {children}
+            </h3>
+          ),
+          p: ({ children }) => (
+            <p className="leading-relaxed">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc space-y-1 pl-5">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal space-y-1 pl-5">{children}</ol>
+          ),
+          li: ({ children }) => (
+            <li className="leading-relaxed">{children}</li>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold">{children}</strong>
+          ),
+          code: ({ className, children, ...props }) => {
+            const inline = 'inline' in props && props.inline === true
+            if (inline || !className) {
+              return (
+                <code className="rounded bg-background/80 px-1 py-0.5 text-xs font-mono">
+                  {children}
+                </code>
+              )
+            }
+            return (
+              <code className={`${className} block overflow-x-auto text-xs font-mono`}>
+                {children}
+              </code>
+            )
+          },
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-lg border bg-background/50 p-3 text-xs">
+              {children}
+            </pre>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
+export default function ProposalPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const sessionIdFromUrl = searchParams.get('session_id')
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(
+    sessionIdFromUrl
+  )
+  const supabase = useMemo(() => createClient(), [])
+
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
+  const [messages, setMessages] = useState<ChatMessage[]>(getDefaultMessages)
 
   const [input, setInput] = useState('')
-  const [loadingSession, setLoadingSession] = useState(Boolean(sessionId))
+  const [loadingSession, setLoadingSession] = useState(Boolean(sessionIdFromUrl))
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!sessionId) return
-
     let isMounted = true
 
     async function loadSessionMessages() {
+      setError('')
+      setActiveSessionId(sessionIdFromUrl)
+
+      if (!sessionIdFromUrl) {
+        setMessages(getDefaultMessages())
+        setInput('')
+        setLoadingSession(false)
+        return
+      }
+
+      setLoadingSession(true)
+
       const { data, error } = await supabase
         .from('messages')
         .select('role, content, created_at')
-        .eq('session_id', sessionId)
+        .eq('session_id', sessionIdFromUrl)
         .order('created_at', { ascending: true })
 
       if (!isMounted) return
@@ -51,6 +135,7 @@ export default function ProposalPage() {
       if (error) {
         console.error('Gagal mengambil messages:', error.message)
         setError('Gagal memuat sesi bimbingan.')
+        setMessages(getDefaultMessages())
         setLoadingSession(false)
         return
       }
@@ -62,6 +147,8 @@ export default function ProposalPage() {
             content: message.content,
           }))
         )
+      } else {
+        setMessages(getDefaultMessages())
       }
 
       setLoadingSession(false)
@@ -72,7 +159,7 @@ export default function ProposalPage() {
     return () => {
       isMounted = false
     }
-  }, [sessionId, supabase])
+  }, [sessionIdFromUrl, supabase])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -106,6 +193,29 @@ export default function ProposalPage() {
     setIsStreaming(true)
 
     try {
+      let sessionIdForRequest = activeSessionId
+
+      if (!sessionIdForRequest) {
+        const sessionResponse = await fetch('/api/sessions/new', {
+          method: 'POST',
+        })
+
+        const sessionResult = await sessionResponse.json()
+
+        if (!sessionResponse.ok) {
+          throw new Error(sessionResult.error ?? 'Gagal membuat sesi baru')
+        }
+
+        sessionIdForRequest = sessionResult.session_id as string
+        setActiveSessionId(sessionIdForRequest)
+
+        window.history.replaceState(
+          null,
+          '',
+          `/dashboard/proposal?session_id=${sessionIdForRequest}`
+        )
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -114,7 +224,7 @@ export default function ProposalPage() {
         body: JSON.stringify({
           messages: nextMessages,
           step: 'proposal_guidance',
-          sessionId,
+          sessionId: sessionIdForRequest,
         }),
       })
 
@@ -168,7 +278,11 @@ export default function ProposalPage() {
       }
     } catch (error) {
       console.error(error)
-      setError('Gagal mendapatkan respons AI. Coba lagi.')
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Gagal mendapatkan respons AI. Coba lagi.'
+      )
 
       setMessages((prev) => {
         const updated = [...prev]
@@ -182,13 +296,18 @@ export default function ProposalPage() {
       })
     } finally {
       setIsStreaming(false)
+      router.refresh()
     }
   }
 
   if (loadingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="ai-chat-surface flex min-h-screen flex-col items-center justify-center gap-4">
+        <div
+          className="h-9 w-9 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-muted-foreground">
           Memuat sesi bimbingan...
         </p>
       </div>
@@ -196,26 +315,31 @@ export default function ProposalPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background md:h-screen">
-      <header className="border-b px-4 py-3">
-        <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div>
-            <h1 className="font-semibold">Bimbingan Proposal</h1>
+    <div className="ai-chat-surface flex min-h-screen flex-col bg-background/90 md:h-screen">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/75 px-4 py-3 backdrop-blur-xl md:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-primary/90">
+              Workspace
+            </p>
+            <h1 className="truncate font-semibold tracking-tight">
+              Bimbingan Proposal
+            </h1>
             <p className="text-xs text-muted-foreground">
-              {sessionId
-                ? 'Sesi berbasis dokumen aktif'
-                : 'Sesi eksplorasi topik baru'}
+              {activeSessionId
+                ? 'Percakapan tersimpan · lanjutkan kapan saja'
+                : 'Eksplorasi topik baru · tanpa dokumen'}
             </p>
           </div>
 
-          <div className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
-            Socratic Mode
+          <div className="shrink-0 rounded-full bg-gradient-to-r from-primary/15 via-primary/10 to-accent/15 px-3 py-1.5 text-[11px] font-medium text-primary ring-1 ring-primary/20">
+            Socratic · AI
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3 md:px-4">
-        <div className="mx-auto max-w-3xl py-5 md:py-8 space-y-5 md:space-y-6">
+      <main className="flex-1 overflow-y-auto px-3 md:px-6">
+        <div className="mx-auto max-w-3xl py-5 md:py-8 space-y-6 md:space-y-8">
           {messages.map((message, index) => {
             const isUser = message.role === 'user'
 
@@ -225,30 +349,54 @@ export default function ProposalPage() {
                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[92%] md:max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    isUser
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-foreground'
+                  className={`flex max-w-[94%] gap-3 md:max-w-[88%] ${
+                    isUser ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
                   {!isUser && (
-                    <p className="mb-2 text-xs font-medium text-muted-foreground">
-                      EduResearch AI
-                    </p>
+                    <div
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/85 text-[10px] font-bold text-primary-foreground shadow-md shadow-primary/25"
+                      aria-hidden
+                    >
+                      AI
+                    </div>
                   )}
+                  <div
+                    className={`min-w-0 flex-1 rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      isUser
+                        ? 'whitespace-pre-wrap bg-gradient-to-br from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20'
+                        : 'border border-border/80 bg-card/90 text-foreground shadow-sm backdrop-blur-sm dark:bg-card/70'
+                    }`}
+                  >
+                    {!isUser && (
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                        EduResearch AI
+                      </p>
+                    )}
 
-                  {message.content || (
-                    <span className="text-muted-foreground">
-                      Menyusun jawaban...
-                    </span>
-                  )}
+                    {message.content ? (
+                      isUser ? (
+                        <span>{message.content}</span>
+                      ) : (
+                        <AssistantMarkdown content={message.content} />
+                      )
+                    ) : (
+                      <div className="space-y-2 pt-0.5">
+                        <div className="typing-shimmer h-2.5 w-3/4 rounded-full" />
+                        <div className="typing-shimmer h-2.5 w-1/2 rounded-full opacity-70" />
+                        <p className="text-xs text-muted-foreground">
+                          Menyusun jawaban...
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )
           })}
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm backdrop-blur-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
               {error}
             </div>
           )}
@@ -257,9 +405,12 @@ export default function ProposalPage() {
         </div>
       </main>
 
-      <footer className="border-t bg-background px-3 py-3 md:px-4 md:py-4 pb-24 md:pb-4">
+      <footer className="border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4 pb-24 md:pb-4">
         <div className="mx-auto max-w-3xl space-y-3">
-          <form onSubmit={handleSubmit} className="relative">
+          <form
+            onSubmit={handleSubmit}
+            className="relative rounded-2xl border border-border/70 bg-muted/30 p-1.5 shadow-inner shadow-black/5 dark:bg-muted/20 dark:shadow-black/20"
+          >
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -271,21 +422,28 @@ export default function ProposalPage() {
                   e.currentTarget.form?.requestSubmit()
                 }
               }}
-              className="min-h-[52px] max-h-40 w-full resize-none rounded-2xl border bg-background px-4 py-3 pr-20 md:pr-24 text-sm outline-none focus:ring-2 focus:ring-primary"
+              className="min-h-[52px] max-h-40 w-full resize-none rounded-xl border-0 bg-transparent px-4 py-3 pr-[5.5rem] text-sm outline-none ring-0 placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-primary/35 md:pr-28"
             />
 
             <button
               type="submit"
               disabled={!input.trim() || isStreaming}
-              className="absolute bottom-2 right-2 rounded-xl bg-primary px-3 py-2 md:px-4 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              className="absolute bottom-2 right-2 rounded-xl bg-gradient-to-br from-primary to-primary/90 px-3 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-opacity hover:opacity-95 disabled:opacity-40 md:px-5"
             >
-              {isStreaming ? '...' : 'Kirim'}
+              {isStreaming ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary-foreground" />
+                  ...
+                </span>
+              ) : (
+                'Kirim'
+              )}
             </button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            EduResearch AI membimbing dengan pertanyaan dan evaluasi, bukan
-            menggantikan proses berpikirmu.
+          <p className="text-center text-[11px] leading-relaxed text-muted-foreground md:text-xs">
+            EduResearch AI membimbing dengan pertanyaan dan evaluasi — kamu yang
+            berpikir, AI yang memandu.
           </p>
         </div>
       </footer>
