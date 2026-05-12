@@ -1,229 +1,209 @@
+import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
-import { redirect } from 'next/navigation'
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient()
 
-  // Cek session
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // Ambil profil user
   const { data: profile } = await supabase
     .from('users')
-    .select('*')
-    .eq('id', user.id)
+    .select('nama, jenjang, fakultas, prodi')
+    .eq('id', user?.id)
     .single()
 
-  const { data: recentSessions } = await supabase
+  const { data: documents } = await supabase
+    .from('documents')
+    .select('id, nama_file, jenis, status, created_at')
+    .eq('user_id', user?.id)
+    .order('created_at', { ascending: false })
+    .limit(3)
+
+  const { data: sessions } = await supabase
     .from('sessions')
-    .select(`
-      id,
-      modul,
-      status,
-      created_at,
-      document_id,
-      documents (
-        id,
-        nama_file,
-        jenis,
-        status
-      )
-    `)
-    .eq('user_id', user.id)
+    .select('id, modul, status, created_at, document_id')
+    .eq('user_id', user?.id)
     .not('document_id', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(5)
+    .limit(3)
 
-  const uniqueRecentSessions = recentSessions
-    ? recentSessions.filter((session, index, self) => {
-        if (!session.document_id) return false
-
-        return (
-          index ===
-          self.findIndex((item) => item.document_id === session.document_id)
-        )
-      })
-    : []
-
-  function formatDate(date: string) {
-    return new Date(date).toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    })
-  }
-
-  function getSessionUrl(modul: string, sessionId: string) {
-    return `/dashboard/${modul}?session_id=${sessionId}`
-  }
+  const firstName = profile?.nama?.split(' ')[0] ?? 'Mahasiswa'
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <nav className="border-b px-6 py-4 flex items-center justify-between">
-        <h1 className="font-bold text-lg">EduResearch AI</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            {profile?.nama}
-          </span>
-          <span className="text-xs border px-2 py-1 rounded-full">
-            {profile?.jenjang} — {profile?.prodi}
-          </span>
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
-
-        {/* Welcome */}
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold">
-            Halo, {profile?.nama?.split(' ')[0]} 👋
-          </h2>
-          <p className="text-muted-foreground">
-            Mau mulai dari mana hari ini?
+    <div className="min-h-screen px-6 py-10">
+      <div className="mx-auto max-w-4xl space-y-10">
+        <section className="space-y-3 text-center pt-10">
+          <p className="text-sm text-muted-foreground">
+            EduResearch AI
           </p>
-        </div>
 
-        {/* 3 Modul Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            {
-              title: 'Proposal',
-              desc: 'Buat & kembangkan proposal penelitian step by step',
-              icon: '📋',
-              href: '/dashboard/proposal',
-              status: 'Tersedia'
-            },
-            {
-              title: 'Skripsi / TA',
-              desc: 'Bimbingan penulisan skripsi per bab',
-              icon: '📖',
-              href: '/dashboard/skripsi',
-              status: 'Segera'
-            },
-            {
-              title: 'Jurnal',
-              desc: 'Panduan publikasi jurnal SINTA & internasional',
-              icon: '📄',
-              href: '/dashboard/jurnal',
-              status: 'Segera'
-            }
-          ].map((modul) => (
-            <div
-              key={modul.title}
-              className="border rounded-xl p-6 space-y-3 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-2xl">{modul.icon}</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  modul.status === 'Tersedia'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {modul.status}
-                </span>
-              </div>
-              <h3 className="font-semibold">{modul.title}</h3>
-              <p className="text-sm text-muted-foreground">{modul.desc}</p>
-              {modul.status === 'Tersedia' && (
-                <a
-                  href={modul.href}
-                  className="block text-center py-2 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90"
-                >
-                  Mulai →
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            Halo, {firstName}. Mau lanjut riset dari mana?
+          </h1>
 
-        {/* Quick Access */}
-        <div className="space-y-4">
-          <h3 className="font-semibold">Akses Cepat</h3>
-          <a
-            href="/dashboard/references"
-            className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            Upload dokumen, cari referensi, atau lanjutkan sesi bimbingan riset
+            berbasis AI.
+          </p>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <Link
+            href="/dashboard/proposal"
+            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
           >
-            <span className="text-2xl">🔍</span>
+            <div className="text-2xl">✍️</div>
             <div>
-              <p className="font-medium text-sm">Cari Referensi</p>
-              <p className="text-xs text-muted-foreground">
-                250 juta+ paper dari OpenAlex
+              <h2 className="font-semibold">Mulai Bimbingan</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Mulai diskusi Socratic dari nol.
               </p>
             </div>
-            <span className="ml-auto text-muted-foreground">→</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/documents"
-            className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
           >
-            <span className="text-2xl">📁</span>
+            <div className="text-2xl">📁</div>
             <div>
-              <p className="font-medium text-sm">Dokumen Saya</p>
-              <p className="text-xs text-muted-foreground">
-                Upload proposal, skripsi, laporan KP, atau template
+              <h2 className="font-semibold">Upload Dokumen</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Analisis proposal, jurnal, atau skripsi.
               </p>
             </div>
-            <span className="ml-auto text-muted-foreground">→</span>
-          </a>
-        </div>
+          </Link>
 
-        {/* Recent Sessions */}
-        <div className="space-y-4">
-          <h3 className="font-semibold">Sesi Terakhir</h3>
-
-          {uniqueRecentSessions.length === 0 ? (
-            <div className="border rounded-xl p-6 text-center text-muted-foreground text-sm">
-              Belum ada sesi. Mulai dari modul Proposal atau Dokumen Saya.
+          <Link
+            href="/dashboard/references"
+            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
+          >
+            <div className="text-2xl">🔍</div>
+            <div>
+              <h2 className="font-semibold">Cari Referensi</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Temukan paper dari OpenAlex.
+              </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {uniqueRecentSessions.map((session) => {
-                const document = Array.isArray(session.documents)
-                  ? session.documents[0]
-                  : session.documents
+          </Link>
+        </section>
 
-                return (
-                  <a
-                    key={session.id}
-                    href={getSessionUrl(session.modul, session.id)}
-                    className="flex items-center gap-4 border rounded-xl p-4 hover:shadow-md transition-shadow"
+        <section className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">Dokumen Terbaru</h2>
+              <p className="text-sm text-muted-foreground">
+                Dokumen akademik yang terakhir kamu upload.
+              </p>
+            </div>
+
+            {!documents || documents.length === 0 ? (
+              <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                Belum ada dokumen. Upload dokumen pertama kamu.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <Link
+                    key={doc.id}
+                    href="/dashboard/documents"
+                    className="block rounded-xl border p-4 hover:bg-muted/40"
                   >
-                    <span className="text-2xl">💬</span>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">
-                          {document?.nama_file ?? 'Sesi Bimbingan'}
-                        </p>
-
-                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                          {session.modul}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {document
-                          ? `${document.jenis} · ${document.status}`
-                          : 'Tanpa dokumen'}{' '}
-                        · {formatDate(session.created_at)}
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-sm truncate">
+                        {doc.nama_file}
                       </p>
+
+                      <span className="text-xs rounded-full bg-muted px-2 py-1">
+                        {doc.status}
+                      </span>
                     </div>
 
-                    <span className="text-sm text-muted-foreground">
-                      Lanjutkan →
-                    </span>
-                  </a>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {doc.jenis} · {formatDate(doc.created_at)}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
-      </main>
+          <div className="rounded-2xl border p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">Sesi Bimbingan</h2>
+              <p className="text-sm text-muted-foreground">
+                Lanjutkan sesi riset berbasis dokumen.
+              </p>
+            </div>
+
+            {!sessions || sessions.length === 0 ? (
+              <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                Belum ada sesi. Mulai dari dokumen yang sudah dianalisis.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <Link
+                    key={session.id}
+                    href={`/dashboard/${session.modul}?session_id=${session.id}`}
+                    className="block rounded-xl border p-4 hover:bg-muted/40"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-sm">
+                        Sesi {session.modul}
+                      </p>
+
+                      <span className="text-xs rounded-full bg-muted px-2 py-1">
+                        {session.status}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(session.created_at)}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border p-5">
+          <h2 className="font-semibold">Profil Akademik</h2>
+
+          <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+            <div>
+              <p className="text-muted-foreground">Nama</p>
+              <p className="font-medium">{profile?.nama ?? '-'}</p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground">Jenjang</p>
+              <p className="font-medium">{profile?.jenjang ?? '-'}</p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground">Fakultas</p>
+              <p className="font-medium">{profile?.fakultas ?? '-'}</p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground">Program Studi</p>
+              <p className="font-medium">{profile?.prodi ?? '-'}</p>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
