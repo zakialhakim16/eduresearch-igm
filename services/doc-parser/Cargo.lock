@@ -564,6 +564,7 @@ dependencies = [
  "actix-web",
  "futures-util",
  "pdf-extract",
+ "regex",
  "serde",
  "serde_json",
  "tokio",

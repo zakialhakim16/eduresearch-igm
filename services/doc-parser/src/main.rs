@@ -1,6 +1,7 @@
 use actix_multipart::Multipart;
 use actix_web::{error, get, post, web, App, Error, HttpResponse, HttpServer, Responder};
 use futures_util::StreamExt;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::io::Write;
@@ -27,7 +28,7 @@ struct ParseResponse {
     status: String,
     detected_type: String,
     word_count: usize,
-    chapters: Vec<String>,
+    chapters: Vec<ChapterInfo>,
     message: String,
 }
 
@@ -37,17 +38,38 @@ struct ParseFileResponse {
     status: String,
     detected_type: String,
     word_count: usize,
-    chapters: Vec<String>,
+    chapters: Vec<ChapterInfo>,
     text_preview: String,
     extracted_text: String,
+    references: Vec<String>,
+    keywords: Vec<String>,
+    quality: DocumentQuality,
     message: String,
+}
+
+#[derive(Serialize)]
+struct ChapterInfo {
+    title: String,
+    word_count: usize,
+    start_line: usize,
+}
+
+#[derive(Serialize)]
+struct DocumentQuality {
+    total: usize,
+    has_abstract: bool,
+    has_chapters: bool,
+    has_references: bool,
+    has_methodology: bool,
+    word_count_adequate: bool,
+    notes: Vec<String>,
 }
 
 #[get("/health")]
 async fn health() -> impl Responder {
     HttpResponse::Ok().json(HealthResponse {
         status: "ok".to_string(),
-        service: "doc-parser".to_string(),
+        service: "doc-parser-v2".to_string(),
     })
 }
 
@@ -67,7 +89,7 @@ async fn parse_document(payload: web::Json<ParseRequest>) -> impl Responder {
         detected_type,
         word_count: 0,
         chapters: vec![],
-        message: "Dummy parser berhasil menerima dokumen".to_string(),
+        message: "Enhanced parser v2 berhasil menerima dokumen".to_string(),
     })
 }
 
@@ -156,8 +178,11 @@ async fn parse_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
 
     let detected_type = detect_document_type(&file_name);
     let word_count = count_words(&extracted_text);
-    let chapters = detect_chapters(&extracted_text);
+    let chapters = detect_chapters_with_content(&extracted_text);
     let text_preview = make_preview(&extracted_text, 700);
+    let references = extract_references(&extracted_text);
+    let keywords = extract_keywords(&extracted_text);
+    let quality = assess_quality(&extracted_text, &detected_type, &chapters, word_count);
 
     Ok(HttpResponse::Ok().json(ParseFileResponse {
         document_id,
@@ -167,7 +192,10 @@ async fn parse_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
         chapters,
         text_preview,
         extracted_text,
-        message: "PDF berhasil dibaca oleh Rust parser".to_string(),
+        references,
+        keywords,
+        quality,
+        message: "PDF berhasil dianalisis oleh Enhanced Rust Parser v2".to_string(),
     }))
 }
 
@@ -201,44 +229,158 @@ fn make_preview(text: &str, max_chars: usize) -> String {
     text.chars().take(max_chars).collect()
 }
 
-fn detect_chapters(text: &str) -> Vec<String> {
-    let mut found = HashSet::new();
+fn detect_chapters_with_content(text: &str) -> Vec<ChapterInfo> {
+    let mut chapters = Vec::new();
+    let lines: Vec<&str> = text.lines().collect();
+    
+    let chapter_patterns = vec![
+        ("BAB I", "BAB I"),
+        ("BAB II", "BAB II"),
+        ("BAB III", "BAB III"),
+        ("BAB IV", "BAB IV"),
+        ("BAB V", "BAB V"),
+        ("ABSTRAK", "ABSTRAK"),
+        ("ABSTRACT", "ABSTRACT"),
+        ("DAFTAR PUSTAKA", "DAFTAR PUSTAKA"),
+        ("LATAR BELAKANG", "Latar Belakang"),
+        ("TINJAUAN PUSTAKA", "Tinjauan Pustaka"),
+        ("METODE PENELITIAN", "Metode Penelitian"),
+        ("HASIL DAN PEMBAHASAN", "Hasil dan Pembahasan"),
+        ("KESIMPULAN DAN SARAN", "Kesimpulan dan Saran"),
+    ];
 
-    for line in text.lines() {
+    for (i, line) in lines.iter().enumerate() {
         let upper = line.trim().to_uppercase();
-
-        if upper.starts_with("BAB I") {
-            found.insert("BAB I".to_string());
-        }
-
-        if upper.starts_with("BAB II") {
-            found.insert("BAB II".to_string());
-        }
-
-        if upper.starts_with("BAB III") {
-            found.insert("BAB III".to_string());
-        }
-
-        if upper.starts_with("BAB IV") {
-            found.insert("BAB IV".to_string());
-        }
-
-        if upper.starts_with("BAB V") {
-            found.insert("BAB V".to_string());
-        }
-
-        if upper.contains("DAFTAR PUSTAKA") {
-            found.insert("DAFTAR PUSTAKA".to_string());
-        }
-
-        if upper.contains("ABSTRAK") || upper.contains("ABSTRACT") {
-            found.insert("ABSTRAK".to_string());
+        
+        for (pattern, title) in &chapter_patterns {
+            if upper.contains(pattern) {
+                let chapter_text = extract_chapter_content(&lines, i);
+                chapters.push(ChapterInfo {
+                    title: title.to_string(),
+                    word_count: count_words(&chapter_text),
+                    start_line: i + 1,
+                });
+                break;
+            }
         }
     }
 
-    let mut chapters: Vec<String> = found.into_iter().collect();
-    chapters.sort();
+    chapters.sort_by(|a, b| a.start_line.cmp(&b.start_line));
+    chapters.dedup_by(|a, b| a.title == b.title);
     chapters
+}
+
+fn extract_chapter_content(lines: &[&str], start_idx: usize) -> String {
+    let mut end_idx = lines.len();
+    let current_title = lines[start_idx].trim().to_uppercase();
+
+    for i in (start_idx + 1)..lines.len() {
+        let upper = lines[i].trim().to_uppercase();
+
+        let is_new_chapter =
+            upper.starts_with("BAB ")
+                || upper.contains("ABSTRAK")
+                || upper.contains("ABSTRACT")
+                || upper.contains("DAFTAR PUSTAKA")
+                || upper.contains("REFERENSI")
+                || upper.contains("REFERENCES");
+
+        if is_new_chapter && upper != current_title {
+            end_idx = i;
+            break;
+        }
+    }
+
+    let chapter_lines = &lines[start_idx..end_idx];
+    chapter_lines.join("\n")
+}
+
+fn extract_references(text: &str) -> Vec<String> {
+    let mut references = Vec::new();
+    let lines: Vec<&str> = text.lines().collect();
+    let mut in_references = false;
+    
+    for line in lines {
+        let upper = line.trim().to_uppercase();
+        
+        if upper.contains("DAFTAR PUSTAKA") || upper.contains("REFERENSI") {
+            in_references = true;
+            continue;
+        }
+        
+        if in_references && !line.trim().is_empty() {
+            let clean_ref = line.trim().to_string();
+            if clean_ref.len() > 10 && !clean_ref.starts_with("http") {
+                references.push(clean_ref);
+            }
+        }
+    }
+    
+    references.truncate(20);
+    references
+}
+
+fn extract_keywords(text: &str) -> Vec<String> {
+    let common_words = HashSet::from([
+        "dan", "yang", "dari", "pada", "dengan", "untuk", "adalah", "ini", "tersebut",
+        "dalam", "akan", "tidak", "oleh", "atau", "juga", "sudah", "bisa",
+        "lebih", "karena", "seperti", "jika", "mereka", "kita", "para", "antara",
+        "the", "and", "of", "to", "in", "is", "for", "with", "are", "be", "this",
+        "that", "have", "from", "at", "by", "as", "was", "were", "been", "has",
+    ]);
+    
+    let word_regex = Regex::new(r"\b[a-zA-Z]{3,}\b").unwrap();
+    let words: Vec<String> = word_regex.find_iter(text)
+        .map(|m| m.as_str().to_lowercase())
+        .collect();
+    
+    let mut word_counts = std::collections::HashMap::new();
+    for word in &words {
+        if !common_words.contains(word.as_str()) && word.len() >= 4 {
+            *word_counts.entry(word.clone()).or_insert(0) += 1;
+        }
+    }
+    
+    let mut keywords: Vec<(String, usize)> = word_counts.into_iter()
+        .filter(|(_, count)| *count >= 2)
+        .collect();
+    
+    keywords.sort_by(|a, b| b.1.cmp(&a.1));
+    keywords.truncate(15);
+    keywords.into_iter().map(|(word, _)| word).collect()
+}
+
+fn assess_quality(text: &str, _doc_type: &str, chapters: &[ChapterInfo], word_count: usize) -> DocumentQuality {
+    let has_abstract = text.to_uppercase().contains("ABSTRAK") || text.to_uppercase().contains("ABSTRACT");
+    let has_chapters = chapters.len() >= 3;
+    let has_references = text.to_uppercase().contains("DAFTAR PUSTAKA") || text.to_uppercase().contains("REFERENSI");
+    let has_methodology = text.to_uppercase().contains("METODE") || text.to_uppercase().contains("METHODOLOGY");
+    let word_count_adequate = word_count >= 2000;
+    
+    let mut notes = Vec::new();
+    if !has_abstract { notes.push("Tidak memiliki abstrak".to_string()); }
+    if !has_chapters { notes.push("Struktur bab kurang lengkap".to_string()); }
+    if !has_references { notes.push("Tidak memiliki daftar pustaka".to_string()); }
+    if !has_methodology { notes.push("Tidak memiliki metode penelitian".to_string()); }
+    if !word_count_adequate { notes.push("Jumlah kata kurang dari 2000".to_string()); }
+    
+    let total_score = [
+        has_abstract as usize,
+        has_chapters as usize,
+        has_references as usize,
+        has_methodology as usize,
+        word_count_adequate as usize,
+    ].iter().sum::<usize>() * 20;
+    
+    DocumentQuality {
+        total: total_score,
+        has_abstract,
+        has_chapters,
+        has_references,
+        has_methodology,
+        word_count_adequate,
+        notes,
+    }
 }
 
 #[actix_web::main]
@@ -246,7 +388,7 @@ async fn main() -> std::io::Result<()> {
     let host = "127.0.0.1";
     let port = 8001;
 
-    println!("doc-parser running at http://{}:{}", host, port);
+    println!("Enhanced doc-parser v2 running at http://{}:{}", host, port);
 
     HttpServer::new(|| {
         App::new()
