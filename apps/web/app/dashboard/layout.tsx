@@ -173,7 +173,7 @@ export default async function DashboardLayout({
           </div>
         </aside>
 
-        <main className="flex min-h-screen flex-1 flex-col">
+        <main className="flex min-h-screen flex-1 flex-col pb-20 md:pb-0">
           <header className="flex items-center justify-between border-b px-4 py-3 md:hidden">
             <Link href="/dashboard">
               <p className="font-bold">EduResearch AI</p>
@@ -198,6 +198,42 @@ export default async function DashboardLayout({
           </div>
         </main>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur md:hidden">
+        <div className="grid grid-cols-4">
+          <Link
+            href="/dashboard"
+            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <span className="text-lg">🏠</span>
+            <span>Home</span>
+          </Link>
+
+          <Link
+            href="/dashboard/proposal"
+            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <span className="text-lg">✍️</span>
+            <span>Chat</span>
+          </Link>
+
+          <Link
+            href="/dashboard/documents"
+            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <span className="text-lg">📁</span>
+            <span>Dokumen</span>
+          </Link>
+
+          <Link
+            href="/dashboard/references"
+            className="flex flex-col items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <span className="text-lg">🔍</span>
+            <span>Referensi</span>
+          </Link>
+        </div>
+      </nav>
     </div>
   )
 }
