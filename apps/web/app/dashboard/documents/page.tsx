@@ -656,15 +656,19 @@ export default function DocumentsPage() {
         </a>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-6 py-10 space-y-8">
+      <main className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-10 space-y-8">
         <section className="space-y-2">
-          <h2 className="text-2xl font-bold">Dokumen Saya</h2>
-          <p className="text-muted-foreground">
-            Upload proposal, skripsi, laporan KP, atau template akademik kamu.
+          <p className="text-sm text-muted-foreground">Document Intelligence</p>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Dokumen Saya
+          </h2>
+          <p className="max-w-2xl text-sm md:text-base text-muted-foreground">
+            Upload dokumen akademik kamu, lalu biarkan EduResearch AI membantu membaca,
+            menganalisis, mencari referensi, dan memulai bimbingan.
           </p>
         </section>
 
-        <section className="border rounded-xl p-6 space-y-5">
+        <section className="rounded-2xl border bg-background p-4 md:p-6 space-y-5">
           <div>
             <h3 className="font-semibold">Upload Dokumen Baru</h3>
             <p className="text-sm text-muted-foreground">
@@ -718,7 +722,7 @@ export default function DocumentsPage() {
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            className="w-full md:w-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
           >
             {uploading ? 'Mengupload...' : 'Upload Dokumen'}
           </button>
@@ -733,15 +737,21 @@ export default function DocumentsPage() {
           </div>
 
           {documents.length === 0 ? (
-            <div className="border rounded-xl p-8 text-center text-sm text-muted-foreground">
-              Belum ada dokumen. Upload dokumen pertama kamu di atas.
+            <div className="rounded-2xl border bg-muted/30 p-8 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-background text-2xl">
+                📁
+              </div>
+              <p className="font-medium">Belum ada dokumen</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Upload proposal, jurnal, atau skripsi pertama kamu untuk mulai dianalisis.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
               {documents.map((doc) => (
                 <div
                   key={doc.id}
-                  className="border rounded-xl p-5 space-y-4"
+                  className="rounded-2xl border bg-background p-4 md:p-5 space-y-4"
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
@@ -768,7 +778,7 @@ export default function DocumentsPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           doc.status === 'parsed'
@@ -786,14 +796,14 @@ export default function DocumentsPage() {
                           doc.status !== 'parsed' ||
                           !doc.ai_summary
                         }
-                        className="text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
+                        className="w-full sm:w-auto text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
                       >
                         {startingSessionId === doc.id ? 'Memulai...' : 'Mulai Bimbingan'}
                       </button>
 
                       <button
                         onClick={() => toggleDocumentDetail(doc.id)}
-                        className="text-sm px-3 py-2 border rounded-lg hover:bg-muted"
+                        className="w-full sm:w-auto text-sm px-3 py-2 border rounded-lg hover:bg-muted"
                       >
                         {expandedDocumentId === doc.id ? 'Sembunyikan Detail' : 'Lihat Detail'}
                       </button>
@@ -803,7 +813,7 @@ export default function DocumentsPage() {
                   {expandedDocumentId === doc.id && (
                     <div className="space-y-4">
                       <div className="rounded-xl border bg-muted/20 p-2">
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                           {[
                             { key: 'summary', label: 'Ringkasan' },
                             { key: 'structure', label: 'Struktur' },
@@ -818,7 +828,7 @@ export default function DocumentsPage() {
                                 onClick={() =>
                                   setActiveDocumentTab(doc.id, tab.key as DocumentDetailTab)
                                 }
-                                className={`rounded-lg px-3 py-2 text-sm transition ${
+                                className={`rounded-lg px-2 py-2 text-xs md:px-3 md:text-sm transition ${
                                   isActive
                                     ? 'bg-background font-medium shadow-sm'
                                     : 'text-muted-foreground hover:bg-background/60'
