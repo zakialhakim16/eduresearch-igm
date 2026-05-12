@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="dashboard-app-bg min-h-screen text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center gap-8 px-6 py-10 lg:gap-14">
         <section className="w-full lg:w-[42%]">
           <div className="mb-12">
@@ -60,7 +60,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-5 backdrop-blur-sm">
+            <div className="w-full max-w-md space-y-4 rounded-3xl border border-border/70 bg-card/90 p-6 shadow-xl shadow-black/[0.06] ring-1 ring-black/[0.04] backdrop-blur-md dark:border-white/10 dark:bg-card/80 dark:shadow-black/40 dark:ring-white/[0.06]">
               <div className="space-y-2">
                 <label className="text-sm font-medium">NPM</label>
                 <div className="flex items-center overflow-hidden rounded-lg border border-input bg-muted focus-within:ring-2 focus-within:ring-primary">

@@ -145,18 +145,39 @@ export default async function DashboardLayout({
                       : session.documents
 
                     return (
-                      <Link
+                      <div
                         key={session.id}
-                        href={getSessionUrl(session.modul, session.id)}
-                        className="block rounded-xl border border-transparent px-3 py-2.5 text-sm transition-all hover:border-border hover:bg-background hover:shadow-sm"
+                        className="group flex items-center gap-1 rounded-lg hover:bg-background"
                       >
-                        <p className="truncate font-medium">
-                          {document?.nama_file ?? 'Sesi Bimbingan'}
-                        </p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {session.modul} · {formatDate(session.created_at)}
-                        </p>
-                      </Link>
+                        <Link
+                          href={getSessionUrl(session.modul, session.id)}
+                          className="min-w-0 flex-1 px-3 py-2 text-sm"
+                        >
+                          <p className="truncate font-medium">
+                            {document?.nama_file ?? 'Bimbingan Baru'}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {document ? session.modul : 'tanpa dokumen'} ·{' '}
+                            {formatDate(session.created_at)}
+                          </p>
+                        </Link>
+
+                        <form
+                          action="/api/sessions/delete"
+                          method="post"
+                          className="pr-2"
+                        >
+                          <input type="hidden" name="session_id" value={session.id} />
+                          <button
+                            type="submit"
+                            title="Hapus riwayat"
+                            aria-label="Hapus riwayat"
+                            className="rounded-md px-2 py-1 text-xs text-muted-foreground opacity-60 hover:bg-muted hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            ✕
+                          </button>
+                        </form>
+                      </div>
                     )
                   })}
                 </div>

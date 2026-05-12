@@ -315,8 +315,8 @@ export default function ProposalPage() {
   }
 
   return (
-    <div className="ai-chat-surface flex min-h-screen flex-col bg-background/90 md:h-screen">
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/75 px-4 py-3 backdrop-blur-xl md:px-6">
+    <div className="ai-chat-surface flex min-h-[100dvh] flex-col bg-background/90 md:h-screen">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/80 px-4 py-3.5 shadow-sm shadow-black/[0.02] backdrop-blur-xl md:px-6 dark:shadow-black/20">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-medium uppercase tracking-wider text-primary/90">
@@ -332,14 +332,14 @@ export default function ProposalPage() {
             </p>
           </div>
 
-          <div className="shrink-0 rounded-full bg-gradient-to-r from-primary/15 via-primary/10 to-accent/15 px-3 py-1.5 text-[11px] font-medium text-primary ring-1 ring-primary/20">
+          <div className="shrink-0 rounded-full bg-gradient-to-r from-primary/20 via-primary/12 to-accent/20 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-primary shadow-sm ring-1 ring-primary/25 dark:from-primary/25 dark:ring-primary/35">
             Socratic · AI
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-3 md:px-6">
-        <div className="mx-auto max-w-3xl py-5 md:py-8 space-y-6 md:space-y-8">
+      <main className="chat-scroll-left min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
+        <div className="mx-auto max-w-3xl px-3 py-5 md:px-6 md:py-8 space-y-6 md:space-y-8">
           {messages.map((message, index) => {
             const isUser = message.role === 'user'
 
@@ -409,7 +409,7 @@ export default function ProposalPage() {
         <div className="mx-auto max-w-3xl space-y-3">
           <form
             onSubmit={handleSubmit}
-            className="relative rounded-2xl border border-border/70 bg-muted/30 p-1.5 shadow-inner shadow-black/5 dark:bg-muted/20 dark:shadow-black/20"
+            className="relative rounded-[1.35rem] border border-border/60 bg-muted/35 p-1.5 shadow-inner shadow-black/[0.04] transition-[border-color,box-shadow] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/20 dark:border-white/10 dark:bg-muted/25 dark:shadow-black/30 dark:focus-within:ring-primary/30"
           >
             <textarea
               value={input}

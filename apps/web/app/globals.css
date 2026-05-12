@@ -50,30 +50,30 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.45 0.15 230);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.92 0.03 150);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.65 0.18 150);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.995 0.004 250);
+  --foreground: oklch(0.16 0.02 260);
+  --card: oklch(1 0.002 250);
+  --card-foreground: oklch(0.16 0.02 260);
+  --popover: oklch(1 0.002 250);
+  --popover-foreground: oklch(0.16 0.02 260);
+  --primary: oklch(0.42 0.19 262);
+  --primary-foreground: oklch(0.99 0.01 260);
+  --secondary: oklch(0.94 0.04 160);
+  --secondary-foreground: oklch(0.22 0.04 260);
+  --muted: oklch(0.965 0.008 250);
+  --muted-foreground: oklch(0.48 0.03 260);
+  --accent: oklch(0.62 0.16 165);
+  --accent-foreground: oklch(0.14 0.03 165);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.45 0.15 230);
-  --chart-1: oklch(0.45 0.15 230);
-  --chart-2: oklch(0.65 0.18 150);
+  --border: oklch(0.91 0.012 250);
+  --input: oklch(0.91 0.012 250);
+  --ring: oklch(0.42 0.19 262);
+  --chart-1: oklch(0.42 0.19 262);
+  --chart-2: oklch(0.62 0.16 165);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.439 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.45 0.15 230);
@@ -85,24 +85,24 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.13 0.02 265);
+  --foreground: oklch(0.97 0.01 250);
+  --card: oklch(0.18 0.025 265);
+  --card-foreground: oklch(0.97 0.01 250);
+  --popover: oklch(0.18 0.025 265);
+  --popover-foreground: oklch(0.97 0.01 250);
+  --primary: oklch(0.72 0.16 262);
+  --primary-foreground: oklch(0.14 0.04 265);
+  --secondary: oklch(0.24 0.04 265);
+  --secondary-foreground: oklch(0.96 0.01 250);
+  --muted: oklch(0.22 0.03 265);
+  --muted-foreground: oklch(0.68 0.03 260);
+  --accent: oklch(0.55 0.14 165);
+  --accent-foreground: oklch(0.98 0.01 165);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.16 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -128,6 +128,12 @@
   html {
     @apply font-sans;
   }
+  ::selection {
+    background: oklch(0.55 0.18 262 / 0.22);
+  }
+  .dark ::selection {
+    background: oklch(0.72 0.16 262 / 0.35);
+  }
 }
 
 /* Ekosistem UI: permukaan dashboard + ambient halus (tanpa mengubah token tema utama) */
@@ -136,28 +142,38 @@
     background-color: var(--background);
     background-image:
       radial-gradient(
-        ellipse 120% 80% at 100% -20%,
-        oklch(0.55 0.12 250 / 0.08),
-        transparent 50%
+        ellipse 130% 90% at 95% -15%,
+        oklch(0.52 0.16 262 / 0.11),
+        transparent 52%
       ),
       radial-gradient(
-        ellipse 90% 60% at -10% 50%,
-        oklch(0.65 0.14 160 / 0.06),
-        transparent 45%
+        ellipse 100% 70% at -5% 45%,
+        oklch(0.62 0.14 175 / 0.09),
+        transparent 48%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 50% 100%,
+        oklch(0.55 0.12 290 / 0.05),
+        transparent 50%
       );
   }
 
   .dark .dashboard-app-bg {
     background-image:
       radial-gradient(
-        ellipse 120% 80% at 100% -20%,
-        oklch(0.55 0.2 260 / 0.12),
-        transparent 50%
+        ellipse 130% 90% at 95% -15%,
+        oklch(0.48 0.22 262 / 0.22),
+        transparent 52%
       ),
       radial-gradient(
-        ellipse 90% 60% at -10% 60%,
-        oklch(0.45 0.08 180 / 0.08),
-        transparent 45%
+        ellipse 100% 70% at -5% 50%,
+        oklch(0.4 0.1 200 / 0.14),
+        transparent 48%
+      ),
+      radial-gradient(
+        ellipse 55% 45% at 40% 105%,
+        oklch(0.45 0.2 280 / 0.12),
+        transparent 55%
       );
   }
 
@@ -190,11 +206,24 @@
   }
 
   .sidebar-glass {
-    @apply border-border/60 bg-muted/40 backdrop-blur-xl dark:bg-muted/20;
+    @apply border-border/50 bg-muted/50 backdrop-blur-2xl dark:border-white/10 dark:bg-muted/25;
   }
 
   .nav-link-dashboard {
-    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:bg-background hover:text-foreground hover:shadow-sm dark:hover:bg-background/80;
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:bg-background/90 hover:text-foreground hover:shadow-md hover:shadow-black/5 dark:hover:bg-white/5 dark:hover:shadow-black/20;
+  }
+
+  /* Kartu aksi dashboard / landing — hover lift + cincin halus */
+  .dash-action-card {
+    @apply relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/40 p-6 shadow-lg shadow-black/[0.04] ring-1 ring-black/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/[0.07] hover:ring-primary/15 dark:border-white/[0.06] dark:from-card dark:via-card dark:to-muted/25 dark:shadow-black/30 dark:ring-white/[0.04] dark:hover:border-primary/30 dark:hover:shadow-primary/10;
+  }
+
+  .dash-action-card-icon {
+    @apply mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shadow-inner transition-transform duration-300 group-hover:scale-105;
+  }
+
+  .dash-panel {
+    @apply rounded-3xl border border-border/50 bg-card/70 p-6 shadow-sm shadow-black/[0.03] backdrop-blur-sm dark:border-white/10 dark:bg-card/50 dark:shadow-black/20;
   }
 
   .typing-shimmer {
@@ -225,5 +254,51 @@
     100% {
       background-position: -100% 0;
     }
+  }
+
+  /*
+   * Scrollbar tipis + di sisi kiri (mirip ChatGPT):
+   * kontainer pakai direction: rtl agara track scrollbar di kiri,
+   * konten dibungkus dengan direction: ltr agar teks tetap normal.
+   */
+  .chat-scroll-left {
+    direction: rtl;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.55 0 0 / 0.28) transparent;
+  }
+
+  .dark .chat-scroll-left {
+    scrollbar-color: oklch(1 0 0 / 0.22) transparent;
+  }
+
+  .chat-scroll-left > * {
+    direction: ltr;
+  }
+
+  .chat-scroll-left::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-scroll-left::-webkit-scrollbar-track {
+    margin-block: 6px;
+    background: transparent;
+  }
+
+  .chat-scroll-left::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(0.55 0 0 / 0.22);
+  }
+
+  .chat-scroll-left::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.45 0 0 / 0.35);
+  }
+
+  .dark .chat-scroll-left::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.18);
+  }
+
+  .dark .chat-scroll-left::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 0.28);
   }
 }

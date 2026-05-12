@@ -39,91 +39,104 @@ export default async function DashboardPage() {
   const firstName = profile?.nama?.split(' ')[0] ?? 'Mahasiswa'
 
   return (
-    <div className="min-h-screen px-6 py-10">
-      <div className="mx-auto max-w-4xl space-y-10">
-        <section className="space-y-3 text-center pt-10">
-          <p className="text-sm text-muted-foreground">
-            EduResearch AI
-          </p>
+    <div className="min-h-screen px-4 py-8 sm:px-6 md:py-12">
+      <div className="mx-auto max-w-4xl space-y-12 md:space-y-14">
+        <section className="relative pt-4 md:pt-6">
+          <div
+            className="pointer-events-none absolute -inset-x-8 -top-6 -z-10 h-64 rounded-[2.5rem] bg-gradient-to-b from-primary/[0.12] via-primary/[0.04] to-transparent blur-2xl md:h-80 dark:from-primary/25 dark:via-primary/10"
+            aria-hidden
+          />
 
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Halo, {firstName}. Mau lanjut riset dari mana?
-          </h1>
+          <div className="space-y-5 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-primary shadow-sm dark:bg-primary/15">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              EduResearch AI
+            </div>
 
-          <p className="mx-auto max-w-2xl text-muted-foreground">
-            Upload dokumen, cari referensi, atau lanjutkan sesi bimbingan riset
-            berbasis AI.
-          </p>
+            <h1 className="bg-gradient-to-br from-foreground via-foreground to-muted-foreground bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-4xl lg:text-[2.35rem] lg:leading-tight">
+              Halo, {firstName}. Mau lanjut riset dari mana?
+            </h1>
+
+            <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+              Upload dokumen, cari referensi, atau lanjutkan sesi bimbingan riset
+              berbasis AI — semua dalam satu workspace.
+            </p>
+          </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Link
-            href="/dashboard/proposal"
-            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
-          >
-            <div className="text-2xl">✍️</div>
+        <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-5">
+          <Link href="/dashboard/proposal" className="group dash-action-card">
+            <div className="dash-action-card-icon bg-gradient-to-br from-primary/25 to-primary/5 shadow-primary/10">
+              ✍️
+            </div>
             <div>
-              <h2 className="font-semibold">Mulai Bimbingan</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Mulai diskusi Socratic dari nol.
+              <h2 className="font-semibold tracking-tight">Mulai Bimbingan</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Diskusi Socratic dari nol — tanpa dokumen pun bisa.
               </p>
             </div>
           </Link>
 
-          <Link
-            href="/dashboard/documents"
-            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
-          >
-            <div className="text-2xl">📁</div>
+          <Link href="/dashboard/documents" className="group dash-action-card">
+            <div className="dash-action-card-icon bg-gradient-to-br from-accent/35 to-accent/10">
+              📁
+            </div>
             <div>
-              <h2 className="font-semibold">Upload Dokumen</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Analisis proposal, jurnal, atau skripsi.
+              <h2 className="font-semibold tracking-tight">Upload Dokumen</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Proposal, jurnal, atau skripsi — parsing & analisis otomatis.
               </p>
             </div>
           </Link>
 
           <Link
             href="/dashboard/references"
-            className="rounded-2xl border p-5 hover:shadow-md transition-shadow space-y-3"
+            className="group dash-action-card sm:col-span-2 md:col-span-1"
           >
-            <div className="text-2xl">🔍</div>
+            <div className="dash-action-card-icon bg-gradient-to-br from-chart-1/25 via-primary/15 to-chart-2/20">
+              🔍
+            </div>
             <div>
-              <h2 className="font-semibold">Cari Referensi</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Temukan paper dari OpenAlex.
+              <h2 className="font-semibold tracking-tight">Cari Referensi</h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Paper akademik dari OpenAlex, simpan ke koleksi kamu.
               </p>
             </div>
           </Link>
         </section>
 
         <section className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border p-5 space-y-4">
+          <div className="dash-panel space-y-5">
             <div>
-              <h2 className="font-semibold">Dokumen Terbaru</h2>
-              <p className="text-sm text-muted-foreground">
-                Dokumen akademik yang terakhir kamu upload.
+              <h2 className="text-lg font-semibold tracking-tight">
+                Dokumen Terbaru
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Yang terakhir kamu unggah.
               </p>
             </div>
 
             {!documents || documents.length === 0 ? (
-              <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                Belum ada dokumen. Upload dokumen pertama kamu.
+              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                Belum ada dokumen. Mulai dari kartu Upload di atas.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {documents.map((doc) => (
                   <Link
                     key={doc.id}
                     href="/dashboard/documents"
-                    className="block rounded-xl border p-4 hover:bg-muted/40"
+                    className="group block rounded-2xl border border-transparent bg-muted/25 px-4 py-3.5 transition-all hover:border-primary/20 hover:bg-muted/50 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-sm truncate">
+                      <p className="truncate text-sm font-medium group-hover:text-primary">
                         {doc.nama_file}
                       </p>
 
-                      <span className="text-xs rounded-full bg-muted px-2 py-1">
+                      <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60 dark:bg-background/50">
                         {doc.status}
                       </span>
                     </div>
@@ -137,34 +150,36 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border p-5 space-y-4">
+          <div className="dash-panel space-y-5">
             <div>
-              <h2 className="font-semibold">Sesi Bimbingan</h2>
-              <p className="text-sm text-muted-foreground">
-                Lanjutkan sesi riset berbasis dokumen.
+              <h2 className="text-lg font-semibold tracking-tight">
+                Sesi Bimbingan
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Lanjutkan percakapan risetmu.
               </p>
             </div>
 
             {!sessions || sessions.length === 0 ? (
-              <div className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
-                Belum ada sesi. Mulai dari dokumen yang sudah dianalisis.
+              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                Belum ada sesi. Buka Mulai Bimbingan untuk membuat yang pertama.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {sessions.map((session) => (
                   <Link
                     key={session.id}
                     href={`/dashboard/${session.modul}?session_id=${session.id}`}
-                    className="block rounded-xl border p-4 hover:bg-muted/40"
+                    className="group block rounded-2xl border border-transparent bg-muted/25 px-4 py-3.5 transition-all hover:border-primary/20 hover:bg-muted/50 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-sm">
+                      <p className="text-sm font-medium group-hover:text-primary">
                         {session.document_id
                           ? `Sesi ${session.modul}`
                           : 'Bimbingan Baru'}
                       </p>
 
-                      <span className="text-xs rounded-full bg-muted px-2 py-1">
+                      <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60 dark:bg-background/50">
                         {session.status}
                       </span>
                     </div>
@@ -179,27 +194,37 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border p-5">
-          <h2 className="font-semibold">Profil Akademik</h2>
+        <section className="dash-panel">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Profil Akademik
+          </h2>
 
-          <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-            <div>
-              <p className="text-muted-foreground">Nama</p>
+          <div className="mt-6 grid gap-5 text-sm md:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Nama
+              </p>
               <p className="font-medium">{profile?.nama ?? '-'}</p>
             </div>
 
-            <div>
-              <p className="text-muted-foreground">Jenjang</p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Jenjang
+              </p>
               <p className="font-medium">{profile?.jenjang ?? '-'}</p>
             </div>
 
-            <div>
-              <p className="text-muted-foreground">Fakultas</p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Fakultas
+              </p>
               <p className="font-medium">{profile?.fakultas ?? '-'}</p>
             </div>
 
-            <div>
-              <p className="text-muted-foreground">Program Studi</p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Program Studi
+              </p>
               <p className="font-medium">{profile?.prodi ?? '-'}</p>
             </div>
           </div>
