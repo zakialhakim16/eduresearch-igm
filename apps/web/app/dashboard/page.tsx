@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   const firstName = profile?.nama?.split(' ')[0] ?? 'Mahasiswa'
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 md:py-12">
+    <div className="min-h-full min-w-0 px-4 py-8 sm:px-6 md:py-12">
       <div className="mx-auto max-w-4xl space-y-12 md:space-y-14">
         <section className="relative pt-4 md:pt-6">
           <div

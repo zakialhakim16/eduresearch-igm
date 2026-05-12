@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     .eq('user_id', user?.id)
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-6 md:py-10">
+    <div className="min-h-full min-w-0 px-4 py-6 md:px-6 md:py-10">
       <div className="mx-auto max-w-4xl space-y-8">
         <section className="space-y-2">
           <p className="text-sm text-muted-foreground">Settings</p>

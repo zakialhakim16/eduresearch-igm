@@ -633,14 +633,14 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex min-h-full min-w-0 items-center justify-center bg-background">
         <p className="text-sm text-muted-foreground">Memuat dokumen...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-full min-w-0 bg-background">
       <nav className="border-b px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="font-bold text-lg">EduResearch AI</h1>
