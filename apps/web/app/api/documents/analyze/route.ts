@@ -5,12 +5,31 @@ type AnalyzeRequest = {
   document_id: string
 }
 
+type ChapterInfo = {
+  title: string
+  word_count: number
+  start_line: number
+}
+
+type QualityScore = {
+  total: number
+  has_abstract: boolean
+  has_chapters: boolean
+  has_references: boolean
+  has_methodology: boolean
+  word_count_adequate: boolean
+  notes: string[]
+}
+
 type RustParseFileResponse = {
   document_id: string
   status: string
   detected_type: string
   word_count: number
-  chapters: string[]
+  chapters: ChapterInfo[]
+  references?: string[]
+  keywords?: string[]
+  quality?: QualityScore
   text_preview: string
   extracted_text: string
   message: string
@@ -109,9 +128,13 @@ export async function POST(request: Request) {
         structure: {
           detected_type: parseResult.detected_type,
           word_count: parseResult.word_count,
-          chapters: parseResult.chapters,
+          chapters: parseResult.chapters ?? [],
+          references: parseResult.references ?? [],
+          keywords: parseResult.keywords ?? [],
+          quality: parseResult.quality ?? null,
           text_preview: parseResult.text_preview,
           message: parseResult.message,
+          parser_version: 'doc-parser-v2',
         },
       })
       .eq('id', document.id)
@@ -130,7 +153,10 @@ export async function POST(request: Request) {
       result: {
         detected_type: parseResult.detected_type,
         word_count: parseResult.word_count,
-        chapters: parseResult.chapters,
+        chapters: parseResult.chapters ?? [],
+        references: parseResult.references ?? [],
+        keywords: parseResult.keywords ?? [],
+        quality: parseResult.quality ?? null,
         text_preview: parseResult.text_preview,
         message: parseResult.message,
       },

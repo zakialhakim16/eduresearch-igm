@@ -17,12 +17,32 @@ type RecommendedReference = {
   is_open_access: boolean
 }
 
+type ChapterInfo = {
+  title: string
+  word_count?: number
+  start_line?: number
+}
+
+type QualityScore = {
+  total?: number
+  has_abstract?: boolean
+  has_chapters?: boolean
+  has_references?: boolean
+  has_methodology?: boolean
+  word_count_adequate?: boolean
+  notes?: string[]
+}
+
 type DocumentStructure = {
   detected_type?: string
   word_count?: number
-  chapters?: string[]
+  chapters?: Array<string | ChapterInfo>
+  references?: string[]
+  keywords?: string[]
+  quality?: QualityScore | null
   text_preview?: string
   message?: string
+  parser_version?: string
 }
 
 type DocumentItem = {
@@ -394,6 +414,7 @@ export default function DocumentsPage() {
 
     if (references.length === 0) {
       setError(
+
         `OpenAlex belum menemukan referensi yang cocok. Query yang dicoba: ${
           result.tried_queries?.join(', ') ?? '-'
         }`
@@ -460,6 +481,26 @@ export default function DocumentsPage() {
       year: 'numeric',
     })
   }
+
+  function getChapterTitle(chapter: string | ChapterInfo) {
+  return typeof chapter === 'string' ? chapter : chapter.title
+}
+
+function getChapterMeta(chapter: string | ChapterInfo) {
+  if (typeof chapter === 'string') return null
+
+  const parts = []
+
+  if (chapter.word_count !== undefined) {
+    parts.push(`${chapter.word_count} kata`)
+  }
+
+  if (chapter.start_line !== undefined) {
+    parts.push(`baris ${chapter.start_line}`)
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : null
+}
 
   if (loading) {
     return (
@@ -680,14 +721,22 @@ export default function DocumentsPage() {
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">Bagian terdeteksi:</p>
                           <div className="flex flex-wrap gap-2">
-                            {doc.structure.chapters.map((chapter) => (
-                              <span
-                                key={chapter}
-                                className="text-xs px-2 py-1 rounded-full border bg-background"
-                              >
-                                {chapter}
-                              </span>
-                            ))}
+                            {doc.structure.chapters?.map((chapter) => {
+                              const title = getChapterTitle(chapter)
+                              const meta = getChapterMeta(chapter)
+
+                              return (
+                                <div
+                                  key={`${title}-${meta ?? ''}`}
+                                  className="text-xs px-3 py-2 rounded-lg border bg-background"
+                                >
+                                  <p className="font-medium">{title}</p>
+                                  {meta && (
+                                    <p className="text-muted-foreground mt-1">{meta}</p>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
@@ -698,6 +747,114 @@ export default function DocumentsPage() {
                           <p className="text-sm leading-relaxed line-clamp-4">
                             {doc.structure.text_preview}
                           </p>
+                        </div>
+                      )}
+
+                      {doc.structure.quality && (
+                        <div className="space-y-2 border-t pt-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">Skor Kualitas Dokumen</p>
+                            <span className="text-sm font-semibold">
+                              {doc.structure.quality.total ?? 0}/100
+                            </span>
+                          </div>
+
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full bg-primary"
+                              style={{
+                                width: `${Math.min(doc.structure.quality.total ?? 0, 100)}%`,
+                              }}
+                            />
+                          </div>
+
+                          {doc.structure.quality.notes &&
+                            doc.structure.quality.notes.length > 0 && (
+                              <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                                {doc.structure.quality.notes.map((note) => (
+                                  <li key={note}>{note}</li>
+                                ))}
+                              </ul>
+                            )}
+                        </div>
+                      )}
+
+                      {doc.structure.references && doc.structure.references.length > 0 && (
+                        <div className="space-y-2 border-t pt-4">
+                          <p className="text-sm font-medium">
+                            Referensi Terdeteksi dari Dokumen:
+                          </p>
+
+                          <div className="space-y-2">
+                            {doc.structure.references.slice(0, 5).map((reference, index) => (
+                              <div
+                                key={`${reference}-${index}`}
+                                className="rounded-lg border bg-background p-3 text-sm text-muted-foreground"
+                              >
+                                {reference}
+                              </div>
+                            ))}
+                          </div>
+
+                          {doc.structure.references.length > 5 && (
+                            <p className="text-xs text-muted-foreground">
+                              +{doc.structure.references.length - 5} referensi lainnya terdeteksi.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {doc.structure.keywords && doc.structure.keywords.length > 0 && (
+                        <div className="space-y-2 border-t pt-4">
+                          <p className="text-sm font-medium">Keyword dari Parser:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {doc.structure.keywords.map((keyword) => (
+                              <span
+                                key={keyword}
+                                className="text-xs px-2 py-1 rounded-full border bg-background"
+                              >
+                                {keyword}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {doc.structure.quality && (
+                        <div className="space-y-2 border-t pt-4">
+                          <div>
+                            <p className="text-sm font-medium">Kualitas Dokumen:</p>
+                            <div className="text-sm text-muted-foreground mt-2">
+                              <p>Skor: {doc.structure.quality.total}/5</p>
+                              <div className="grid grid-cols-2 gap-2 mt-2">
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_abstract ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure.quality.has_abstract ? '✓ Abstrak' : '✗ Abstrak'}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_chapters ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure.quality.has_chapters ? '✓ Struktur' : '✗ Struktur'}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_references ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure.quality.has_references ? '✓ Referensi' : '✗ Referensi'}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.has_methodology ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure.quality.has_methodology ? '✓ Metodologi' : '✗ Metodologi'}
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded ${doc.structure.quality.word_count_adequate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {doc.structure.quality.word_count_adequate ? '✓ Kata Cukup' : '✗ Kata Kurang'}
+                                </span>
+                              </div>
+                              {doc.structure.quality.notes && doc.structure.quality.notes.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-xs font-medium text-amber-600">Catatan:</p>
+                                  <ul className="text-xs text-muted-foreground list-disc list-inside">
+                                    {doc.structure.quality.notes.map((note, i) => (
+                                      <li key={i}>{note}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
 
