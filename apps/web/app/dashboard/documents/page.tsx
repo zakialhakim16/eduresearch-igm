@@ -17,6 +17,22 @@ type RecommendedReference = {
   is_open_access: boolean
 }
 
+type SavedReference = {
+  id: string
+  document_id: string
+  openalex_id: string | null
+  judul: string
+  penulis: string[] | null
+  tahun: number | null
+  jurnal: string | null
+  doi: string | null
+  url: string | null
+  abstrak: string | null
+  sitasi_count: number | null
+  is_open_access: boolean | null
+  created_at: string
+}
+
 type ChapterInfo = {
   title: string
   word_count?: number
@@ -87,9 +103,47 @@ export default function DocumentsPage() {
   const [recommendedReferences, setRecommendedReferences] = useState<
     Record<string, RecommendedReference[]>
   >({})
+  const [savedReferences, setSavedReferences] = useState<
+    Record<string, SavedReference[]>
+  >({})
   const [savingReferenceId, setSavingReferenceId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const fetchSavedReferences = useCallback(
+  async (documentIds: string[]) => {
+    if (documentIds.length === 0) {
+      setSavedReferences({})
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('paper_references')
+      .select(
+        'id, document_id, openalex_id, judul, penulis, tahun, jurnal, doi, url, abstrak, sitasi_count, is_open_access, created_at'
+      )
+      .in('document_id', documentIds)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Gagal mengambil referensi tersimpan:', error.message)
+      return
+    }
+
+    const grouped: Record<string, SavedReference[]> = {}
+
+    for (const reference of data ?? []) {
+      if (!grouped[reference.document_id]) {
+        grouped[reference.document_id] = []
+      }
+
+      grouped[reference.document_id].push(reference)
+    }
+
+    setSavedReferences(grouped)
+  },
+  [supabase]
+)
 
   const fetchDocuments = useCallback(
     async (currentUserId: string) => {
@@ -107,8 +161,11 @@ export default function DocumentsPage() {
       }
 
       setDocuments(data ?? [])
+
+      const documentIds = (data ?? []).map((doc) => doc.id)
+      await fetchSavedReferences(documentIds)
     },
-    [supabase]
+    [supabase, fetchSavedReferences]
   )
 
   useEffect(() => {
@@ -458,6 +515,9 @@ export default function DocumentsPage() {
     }
 
     setSuccess('Referensi berhasil disimpan ke library.')
+
+    await fetchSavedReferences([documentId])
+
     setSavingReferenceId(null)
   }
 
@@ -964,6 +1024,61 @@ function getChapterMeta(chapter: string | ChapterInfo) {
                               ))}
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {savedReferences[doc.id] && savedReferences[doc.id].length > 0 && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div>
+                            <p className="text-sm font-medium">Referensi Tersimpan:</p>
+                            <p className="text-xs text-muted-foreground">
+                              Referensi yang sudah kamu simpan untuk dokumen ini.
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            {savedReferences[doc.id].map((ref) => (
+                              <div
+                                key={ref.id}
+                                className="rounded-lg border bg-background p-4 space-y-2"
+                              >
+                                <div className="space-y-1">
+                                  <p className="font-medium text-sm leading-relaxed">
+                                    {ref.judul}
+                                  </p>
+
+                                  <p className="text-xs text-muted-foreground">
+                                    {ref.penulis && ref.penulis.length > 0
+                                      ? ref.penulis.join(', ')
+                                      : 'Author tidak tersedia'}
+                                    {ref.tahun ? ` · ${ref.tahun}` : ''}
+                                  </p>
+
+                                  <p className="text-xs text-muted-foreground">
+                                    {ref.jurnal ?? 'Jurnal tidak tersedia'} · Sitasi:{' '}
+                                    {ref.sitasi_count ?? 0}
+                                  </p>
+                                </div>
+
+                                {ref.abstrak && (
+                                  <p className="text-sm text-muted-foreground line-clamp-3">
+                                    {ref.abstrak}
+                                  </p>
+                                )}
+
+                                {ref.url && (
+                                  <a
+                                    href={ref.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-block text-sm text-primary hover:underline"
+                                  >
+                                    Buka referensi →
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
