@@ -47,11 +47,7 @@ function abstractFromInvertedIndex(index?: Record<string, number[]> | null) {
 }
 
 function normalizeQuery(query: string) {
-  return query
-    .replace(/kfold/gi, 'k-fold')
-    .replace(/chi square/gi, 'chi-square')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return query.replace(/\s+/g, ' ').trim()
 }
 
 function buildSearchQueries(

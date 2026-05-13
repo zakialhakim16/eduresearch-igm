@@ -37,6 +37,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const router = useRouter()
   const supabase = useSupabaseBrowserClient()
   const envOk = isSupabasePublicEnvConfigured()
@@ -69,6 +70,7 @@ export default function RegisterPage() {
   async function handleRegister() {
     setLoading(true)
     setError('')
+    setSuccess('')
 
     if (!envOk) {
       setError(
@@ -85,7 +87,9 @@ export default function RegisterPage() {
     }
 
     // Validasi email UIGM
-    if (!form.email.endsWith('@uigm.ac.id') && !form.email.endsWith('@student.uigm.ac.id')) {
+    const email = form.email.trim().toLowerCase()
+
+    if (!email.endsWith('@uigm.ac.id') && !email.endsWith('@student.uigm.ac.id')) {
       setError('Hanya email UIGM yang diizinkan')
       setLoading(false)
       return
@@ -93,8 +97,18 @@ export default function RegisterPage() {
 
     // Daftar ke Supabase Auth
     const { data, error: authError } = await supabase.auth.signUp({
-      email: form.email,
+      email,
       password: form.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+        data: {
+          nama: form.nama,
+          npm: form.npm,
+          jenjang: form.jenjang,
+          fakultas: form.fakultas,
+          prodi: form.prodi,
+        },
+      },
     })
 
     if (authError) {
@@ -103,19 +117,32 @@ export default function RegisterPage() {
       return
     }
 
-    // Simpan profil ke tabel users
+    if (!data.session) {
+      setSuccess(
+        `Akun untuk ${email} berhasil dibuat. Cek email kampus kamu untuk konfirmasi, lalu login.`
+      )
+      setLoading(false)
+      return
+    }
+
+    // Simpan profil ke tabel users jika Supabase langsung memberi sesi login.
     if (data.user) {
       const { error: profileError } = await supabase
         .from('users')
-        .insert({
-          id: data.user.id,
-          email: form.email,
-          nama: form.nama,
-          jenjang: form.jenjang,
-          fakultas: form.fakultas,
-          prodi: form.prodi,
-          onboarding_complete: false
-        })
+        .upsert(
+          {
+            id: data.user.id,
+            email,
+            nama: form.nama,
+            jenjang: form.jenjang,
+            fakultas: form.fakultas,
+            prodi: form.prodi,
+            onboarding_complete: false,
+          },
+          {
+            onConflict: 'id',
+          }
+        )
 
       if (profileError) {
         setError('Gagal simpan profil: ' + profileError.message)
@@ -138,6 +165,12 @@ export default function RegisterPage() {
             <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_URL</code> dan{' '}
             <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> di
             Vercel, lalu deploy ulang.
+          </p>
+        )}
+
+        {success && (
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {success}
           </p>
         )}
 

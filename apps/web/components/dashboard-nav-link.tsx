@@ -30,7 +30,7 @@ export function DashboardNavLink({
       className={cn(
         'nav-link-dashboard',
         active &&
-          'bg-background font-medium text-foreground shadow-sm ring-1 ring-black/[0.04] dark:bg-background/80 dark:ring-white/[0.06]'
+          'bg-background font-medium text-foreground shadow-sm ring-1 ring-black/4 dark:bg-background/80 dark:ring-white/6'
       )}
     >
       {children}

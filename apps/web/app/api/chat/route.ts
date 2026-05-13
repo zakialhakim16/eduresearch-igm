@@ -10,14 +10,14 @@ import { makeSessionTitle } from '@/lib/session-title'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type ChatMessage = {
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant'
   content: string
 }
 
 type ChatRequestBody = {
-  messages: ChatMessage[]
-  step?: string
-  sessionId?: string | null
+  messages?: unknown
+  step?: unknown
+  sessionId?: unknown
 }
 
 type ChapterInfo = {
@@ -92,6 +92,29 @@ MODE BIMBINGAN BARU:
 
 function getLastUserMessage(messages: ChatMessage[]) {
   return [...messages].reverse().find((message) => message.role === 'user')
+}
+
+function sanitizeClientMessages(messages: unknown): ChatMessage[] {
+  if (!Array.isArray(messages)) return []
+
+  return messages.flatMap((message): ChatMessage[] => {
+    if (!message || typeof message !== 'object') return []
+
+    const candidate = message as { role?: unknown; content?: unknown }
+
+    if (candidate.role !== 'user' && candidate.role !== 'assistant') return []
+    if (typeof candidate.content !== 'string') return []
+
+    const content = candidate.content.trim()
+    if (!content) return []
+
+    return [
+      {
+        role: candidate.role,
+        content,
+      },
+    ]
+  })
 }
 
 function formatChapters(chapters?: Array<string | ChapterInfo>) {
@@ -226,9 +249,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { messages, step, sessionId } = (await req.json()) as ChatRequestBody
+    const body = (await req.json()) as ChatRequestBody
+    const messages = sanitizeClientMessages(body.messages)
+    const step = typeof body.step === 'string' ? body.step : undefined
+    const sessionId =
+      typeof body.sessionId === 'string' && body.sessionId.trim()
+        ? body.sessionId.trim()
+        : null
 
     const lastUserMessage = getLastUserMessage(messages)
+
+    if (!lastUserMessage) {
+      return NextResponse.json(
+        { error: 'Pesan user wajib dikirim' },
+        { status: 400 }
+      )
+    }
 
     const { data: profile } = await supabase
       .from('users')
@@ -239,6 +275,7 @@ export async function POST(req: NextRequest) {
     let documentContext = ''
     let savedReferencesContext = ''
     let sessionDocument: SessionDocumentRow | null = null
+    let canonicalMessages: AIMessage[] = messages
 
     if (sessionId) {
       const { data: session } = await supabase
@@ -247,6 +284,13 @@ export async function POST(req: NextRequest) {
         .eq('id', sessionId)
         .eq('user_id', user.id)
         .single()
+
+      if (!session) {
+        return NextResponse.json(
+          { error: 'Sesi tidak ditemukan' },
+          { status: 404 }
+        )
+      }
 
       if (session?.document_id) {
         const { data: document } = await supabase
@@ -292,6 +336,16 @@ export async function POST(req: NextRequest) {
           .eq('id', sessionId)
           .eq('user_id', user.id)
       }
+
+      const { data: storedMessages } = await supabase
+        .from('messages')
+        .select('role, content')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+        .limit(60)
+
+      const persistedMessages = sanitizeClientMessages(storedMessages)
+      canonicalMessages = [...persistedMessages, lastUserMessage]
     }
 
     const baseSystemPrompt = getProposalSystemPrompt(
@@ -329,15 +383,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const claudeMessages: AIMessage[] = messages
-      .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
-
     const modelUsedLabel = await getStreamingModelUsedLabel()
-    const aiStream = await streamAI(claudeMessages, systemPrompt)
+    const aiStream = await streamAI(canonicalMessages, systemPrompt)
     const trackedStream = createTrackingStream(aiStream, async (fullText) => {
       if (sessionId && fullText.trim()) {
         await supabase.from('messages').insert({

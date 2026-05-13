@@ -331,10 +331,26 @@ export default function DocumentsPage() {
     })
 
     if (insertError) {
-      setError(
-        'File terupload, tetapi metadata gagal disimpan: ' +
-          insertError.message
-      )
+      const { error: cleanupError } = await supabase.storage
+        .from('documents')
+        .remove([filePath])
+
+      if (cleanupError) {
+        console.error(
+          'Gagal membersihkan file setelah insert metadata gagal:',
+          cleanupError.message
+        )
+        setError(
+          'File terupload, tetapi metadata gagal disimpan dan cleanup storage gagal: ' +
+            insertError.message
+        )
+      } else {
+        setError(
+          'Metadata gagal disimpan, sehingga file yang sempat terupload sudah dibersihkan: ' +
+            insertError.message
+        )
+      }
+
       setUploading(false)
       return
     }

@@ -106,7 +106,7 @@ export default function ReferencesPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 rows={3}
-                placeholder="Contoh: support vector machine phishing website detection chi-square feature selection"
+                placeholder="Contoh: student engagement online learning motivation"
                 className="w-full resize-none bg-transparent px-2 py-2 text-sm outline-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -142,9 +142,9 @@ export default function ReferencesPage() {
         {!searched && (
           <section className="grid gap-3 md:grid-cols-3">
             {[
-              'phishing website detection',
-              'support vector machine classification',
-              'chi-square feature selection',
+              'student engagement online learning',
+              'urban flood risk mitigation',
+              'financial literacy micro enterprises',
             ].map((example) => (
               <button
                 key={example}

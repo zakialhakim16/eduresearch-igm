@@ -20,6 +20,14 @@ type DashboardLayoutProps = {
   children: React.ReactNode
 }
 
+function getMetadataString(
+  metadata: Record<string, unknown>,
+  key: string
+): string | null {
+  const value = metadata[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
@@ -33,11 +41,42 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('users')
     .select('nama, jenjang, prodi')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
+
+  if (!profile) {
+    const metadata = user.user_metadata ?? {}
+
+    await supabase.from('users').upsert(
+      {
+        id: user.id,
+        email: user.email ?? null,
+        nama:
+          getMetadataString(metadata, 'nama') ??
+          user.email?.split('@')[0] ??
+          'Mahasiswa',
+        jenjang: getMetadataString(metadata, 'jenjang') ?? 'S1',
+        fakultas: getMetadataString(metadata, 'fakultas'),
+        prodi: getMetadataString(metadata, 'prodi') ?? 'Teknik Informatika',
+        onboarding_complete: false,
+      },
+      {
+        onConflict: 'id',
+        ignoreDuplicates: true,
+      }
+    )
+
+    const { data: createdProfile } = await supabase
+      .from('users')
+      .select('nama, jenjang, prodi')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    profile = createdProfile
+  }
 
   const { data: recentSessions } = await supabase
     .from('sessions')

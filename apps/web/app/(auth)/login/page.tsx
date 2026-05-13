@@ -90,7 +90,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className="w-full max-w-md space-y-4 rounded-3xl border border-border/70 bg-card/90 p-6 shadow-xl shadow-black/[0.06] ring-1 ring-black/[0.04] backdrop-blur-md dark:border-white/10 dark:bg-card/80 dark:shadow-black/40 dark:ring-white/[0.06]">
+            <div className="w-full max-w-md space-y-4 rounded-3xl border border-border/70 bg-card/90 p-6 shadow-xl shadow-black/6 ring-1 ring-black/4 backdrop-blur-md dark:border-white/10 dark:bg-card/80 dark:shadow-black/40 dark:ring-white/6">
               {!envOk && (
                 <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   Supabase belum dikonfigurasi. Tambahkan{' '}

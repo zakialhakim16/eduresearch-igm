@@ -48,7 +48,7 @@ export function DashboardBottomNav() {
                 }`}
               >
                 <Icon
-                  className="h-[18px] w-[18px] shrink-0"
+                  className="h-4.5 w-4.5 shrink-0"
                   aria-hidden
                   strokeWidth={active ? 2.25 : 2}
                 />
