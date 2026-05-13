@@ -1,4 +1,7 @@
+use actix_cors::Cors;
 use actix_multipart::Multipart;
+use actix_web::http::header;
+use actix_web::http::Method;
 use actix_web::{error, get, post, web, App, Error, HttpResponse, HttpServer, Responder};
 use futures_util::StreamExt;
 use regex::Regex;
@@ -385,18 +388,37 @@ fn assess_quality(text: &str, _doc_type: &str, chapters: &[ChapterInfo], word_co
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let host = "127.0.0.1";
-    let port = 8001;
+    let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8001);
 
-    println!("Enhanced doc-parser v2 running at http://{}:{}", host, port);
+    let bind_addr = format!("{host}:{port}");
+    println!("Enhanced doc-parser v2 listening on http://{bind_addr}");
 
     HttpServer::new(|| {
+        let cors = Cors::default()
+            .allowed_origin_fn(|origin, _req_head| {
+                let b = origin.as_bytes();
+                b.ends_with(b".vercel.app")
+                    || b.ends_with(b"vercel.app")
+                    || b.starts_with(b"http://localhost")
+                    || b.starts_with(b"https://localhost")
+                    || b.starts_with(b"http://127.0.0.1")
+                    || b.starts_with(b"https://127.0.0.1")
+            })
+            .allowed_methods(vec![Method::GET, Method::POST, Method::OPTIONS])
+            .allowed_headers(vec![header::CONTENT_TYPE, header::ACCEPT])
+            .max_age(3600);
+
         App::new()
+            .wrap(cors)
             .service(health)
             .service(parse_document)
             .service(parse_file)
     })
-    .bind((host, port))?
+    .bind(&bind_addr)?
     .run()
     .await
 }
