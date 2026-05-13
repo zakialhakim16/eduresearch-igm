@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { makeSessionTitle } from '@/lib/session-title'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 const DEFAULT_PROPOSAL_MESSAGE = `Halo! Saya EduResearch AI, mentor riset kamu.
@@ -6,20 +7,6 @@ const DEFAULT_PROPOSAL_MESSAGE = `Halo! Saya EduResearch AI, mentor riset kamu.
 Mari kita mulai dengan mengeksplorasi topik penelitianmu.
 
 Ceritakan dulu — bidang apa yang paling menarik perhatianmu belakangan ini? Tidak perlu langsung spesifik, cukup ceritakan minat, keresahan, atau masalah yang sering kamu lihat.`
-
-function makeSessionTitle(firstMessage?: string) {
-  if (!firstMessage) return 'Bimbingan Baru'
-
-  const clean = firstMessage
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  if (!clean) return 'Bimbingan Baru'
-
-  if (clean.length <= 60) return clean
-
-  return clean.slice(0, 60).trim() + '...'
-}
 
 export async function POST(request: NextRequest) {
   try {

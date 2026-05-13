@@ -6,6 +6,7 @@ import {
   getStreamingModelUsedLabel,
 } from '@/lib/ai'
 import { getProposalSystemPrompt, buildChatBehaviorGuard } from '@/lib/prompts'
+import { makeSessionTitle } from '@/lib/session-title'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type ChatMessage = {
@@ -227,6 +228,8 @@ export async function POST(req: NextRequest) {
 
     const { messages, step, sessionId } = (await req.json()) as ChatRequestBody
 
+    const lastUserMessage = getLastUserMessage(messages)
+
     const { data: profile } = await supabase
       .from('users')
       .select('jenjang, prodi')
@@ -240,7 +243,7 @@ export async function POST(req: NextRequest) {
     if (sessionId) {
       const { data: session } = await supabase
         .from('sessions')
-        .select('id, user_id, document_id, modul')
+        .select('id, user_id, document_id, modul, title')
         .eq('id', sessionId)
         .eq('user_id', user.id)
         .single()
@@ -274,6 +277,21 @@ export async function POST(req: NextRequest) {
           savedReferencesContext = buildSavedReferencesContext(savedReferences)
         }
       }
+
+      // Judul otomatis untuk sesi tanpa dokumen (mis. masih "Bimbingan Baru")
+      if (
+        session &&
+        !session.document_id &&
+        lastUserMessage &&
+        (!session.title?.trim() || session.title === 'Bimbingan Baru')
+      ) {
+        const nextTitle = makeSessionTitle(lastUserMessage.content)
+        await supabase
+          .from('sessions')
+          .update({ title: nextTitle })
+          .eq('id', sessionId)
+          .eq('user_id', user.id)
+      }
     }
 
     const baseSystemPrompt = getProposalSystemPrompt(
@@ -300,8 +318,6 @@ export async function POST(req: NextRequest) {
       : [baseSystemPrompt, NEW_GUIDANCE_GUARD, CHAT_BEHAVIOR_GUARD_GENERAL]
           .filter(Boolean)
           .join('\n\n')
-
-    const lastUserMessage = getLastUserMessage(messages)
 
     if (sessionId && lastUserMessage) {
       await supabase.from('messages').insert({

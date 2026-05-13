@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import {
   FolderOpen,
   LayoutDashboard,
@@ -8,22 +9,15 @@ import {
 } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { DashboardBottomNav } from '@/components/dashboard-bottom-nav'
+import { DashboardNavLink } from '@/components/dashboard-nav-link'
+import {
+  DashboardSidebarHistory,
+  type SidebarSessionRow,
+} from '@/components/dashboard-sidebar-history'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type DashboardLayoutProps = {
   children: React.ReactNode
-}
-
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-function getSessionUrl(modul: string, sessionId: string) {
-  return `/dashboard/${modul}?session_id=${sessionId}`
 }
 
 export default async function DashboardLayout({
@@ -63,23 +57,14 @@ export default async function DashboardLayout({
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(12)
+    .limit(25)
 
-  const uniqueRecentSessions = recentSessions
-    ? recentSessions.filter((session, index, self) => {
-        if (!session.document_id) return true
-
-        return (
-          index ===
-          self.findIndex((item) => item.document_id === session.document_id)
-        )
-      })
-    : []
+  const sidebarSessions = (recentSessions ?? []) as SidebarSessionRow[]
 
   return (
     <div className="dashboard-app-bg h-screen max-h-screen overflow-hidden bg-background text-foreground">
       <div className="flex h-screen max-h-screen overflow-hidden">
-        <aside className="sidebar-glass hidden h-screen max-h-screen w-72 shrink-0 flex-col overflow-hidden md:flex">
+        <aside className="sidebar-glass hidden h-screen max-h-screen w-72 shrink-0 flex-col overflow-hidden border-r border-border/50 bg-muted/25 backdrop-blur-xl dark:bg-muted/15 md:flex">
           <div className="shrink-0 border-b border-border/60 px-5 py-5">
             <Link href="/dashboard" className="group block">
               <div className="flex items-center gap-3">
@@ -99,40 +84,40 @@ export default async function DashboardLayout({
           </div>
 
           <div className="shrink-0 space-y-2 px-3 py-4">
-            <Link href="/dashboard/proposal" className="nav-link-dashboard">
+            <DashboardNavLink href="/dashboard/proposal">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 shadow-sm dark:bg-background/50">
                 <PenLine className="h-4 w-4 text-foreground/85" aria-hidden />
               </span>
               <span>Bimbingan Baru</span>
-            </Link>
+            </DashboardNavLink>
 
-            <Link href="/dashboard/documents" className="nav-link-dashboard">
+            <DashboardNavLink href="/dashboard/documents">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 shadow-sm dark:bg-background/50">
                 <FolderOpen className="h-4 w-4 text-foreground/85" aria-hidden />
               </span>
               <span>Dokumen Saya</span>
-            </Link>
+            </DashboardNavLink>
 
-            <Link href="/dashboard/references" className="nav-link-dashboard">
+            <DashboardNavLink href="/dashboard/references">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 shadow-sm dark:bg-background/50">
                 <Search className="h-4 w-4 text-foreground/85" aria-hidden />
               </span>
               <span>Cari Referensi</span>
-            </Link>
+            </DashboardNavLink>
 
-            <Link href="/dashboard" className="nav-link-dashboard">
+            <DashboardNavLink href="/dashboard" activeMatch="exact">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 shadow-sm dark:bg-background/50">
                 <LayoutDashboard className="h-4 w-4 text-foreground/85" aria-hidden />
               </span>
               <span>Dashboard</span>
-            </Link>
+            </DashboardNavLink>
 
-            <Link href="/dashboard/settings" className="nav-link-dashboard">
+            <DashboardNavLink href="/dashboard/settings">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 shadow-sm dark:bg-background/50">
                 <Settings className="h-4 w-4 text-foreground/85" aria-hidden />
               </span>
               <span>Pengaturan</span>
-            </Link>
+            </DashboardNavLink>
           </div>
 
           <div className="custom-sidebar-scroll flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-3 pb-4 pt-1">
@@ -141,57 +126,15 @@ export default async function DashboardLayout({
                 Riwayat Bimbingan
               </p>
 
-              {uniqueRecentSessions.length === 0 ? (
-                <div className="rounded-lg px-3 py-3 text-xs text-muted-foreground">
-                  Belum ada riwayat bimbingan.
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {uniqueRecentSessions.map((session) => {
-                    const document = Array.isArray(session.documents)
-                      ? session.documents[0]
-                      : session.documents
-
-                    return (
-                      <div
-                        key={session.id}
-                        className="group flex items-center gap-1 rounded-lg hover:bg-background"
-                      >
-                        <Link
-                          href={getSessionUrl(session.modul, session.id)}
-                          className="min-w-0 flex-1 px-3 py-2 text-sm"
-                        >
-                          <p className="truncate font-medium">
-                            {document?.nama_file ??
-                              session.title ??
-                              'Bimbingan Baru'}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {document ? session.modul : 'tanpa dokumen'} ·{' '}
-                            {formatDate(session.created_at)}
-                          </p>
-                        </Link>
-
-                        <form
-                          action="/api/sessions/delete"
-                          method="post"
-                          className="pr-2"
-                        >
-                          <input type="hidden" name="session_id" value={session.id} />
-                          <button
-                            type="submit"
-                            title="Hapus riwayat"
-                            aria-label="Hapus riwayat"
-                            className="rounded-md px-2 py-1 text-xs text-muted-foreground opacity-60 hover:bg-muted hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
-                          >
-                            ✕
-                          </button>
-                        </form>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <Suspense
+                fallback={
+                  <div className="rounded-lg px-3 py-3 text-xs text-muted-foreground">
+                    Memuat riwayat…
+                  </div>
+                }
+              >
+                <DashboardSidebarHistory sessions={sidebarSessions} />
+              </Suspense>
             </div>
           </div>
 
@@ -218,34 +161,15 @@ export default async function DashboardLayout({
 
         <main className="flex h-screen max-h-screen min-w-0 min-h-0 flex-1 flex-col overflow-hidden pb-20 md:pb-0">
           <header className="shrink-0 border-b border-border/60 bg-background/80 backdrop-blur-xl md:hidden">
-            <div className="flex items-center justify-between px-4 py-3">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground shadow-sm">
+            <div className="flex items-center px-4 py-3">
+              <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground shadow-sm">
                   ER
                 </span>
-                <span className="font-semibold tracking-tight">EduResearch</span>
+                <span className="truncate font-semibold tracking-tight">
+                  EduResearch AI
+                </span>
               </Link>
-
-              <div className="flex items-center gap-2 text-xs font-medium sm:text-sm">
-                <Link
-                  href="/dashboard/documents"
-                  className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  Dokumen
-                </Link>
-                <Link
-                  href="/dashboard/proposal"
-                  className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  Chat
-                </Link>
-                <Link
-                  href="/dashboard/settings"
-                  className="rounded-full px-2 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  Akun
-                </Link>
-              </div>
             </div>
           </header>
 

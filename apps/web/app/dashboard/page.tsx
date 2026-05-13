@@ -32,7 +32,19 @@ export default async function DashboardPage() {
 
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, title, modul, status, created_at, document_id')
+    .select(
+      `
+      id,
+      title,
+      modul,
+      status,
+      created_at,
+      document_id,
+      documents (
+        nama_file
+      )
+    `
+    )
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false })
     .limit(5)
@@ -167,29 +179,38 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {sessions.map((session) => (
-                  <Link
-                    key={session.id}
-                    href={`/dashboard/${session.modul}?session_id=${session.id}`}
-                    className="group block rounded-2xl border border-transparent bg-muted/25 px-4 py-3.5 transition-all hover:border-primary/20 hover:bg-muted/50 dark:hover:bg-muted/30"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium group-hover:text-primary">
-                        {session.document_id
-                          ? `Sesi ${session.modul}`
-                          : session.title ?? 'Bimbingan Baru'}
+                {sessions.map((session) => {
+                  const document = Array.isArray(session.documents)
+                    ? session.documents[0]
+                    : session.documents
+                  const label =
+                    document?.nama_file?.trim() ||
+                    session.title?.trim() ||
+                    'Bimbingan Baru'
+
+                  return (
+                    <Link
+                      key={session.id}
+                      href={`/dashboard/${session.modul}?session_id=${session.id}`}
+                      className="group block rounded-2xl border border-transparent bg-muted/25 px-4 py-3.5 transition-all hover:border-primary/20 hover:bg-muted/50 dark:hover:bg-muted/30"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-sm font-medium group-hover:text-primary">
+                          {label}
+                        </p>
+
+                        <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60 dark:bg-background/50">
+                          {session.status}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {session.document_id ? session.modul : 'Tanpa dokumen'} ·{' '}
+                        {formatDate(session.created_at)}
                       </p>
-
-                      <span className="shrink-0 rounded-full bg-background/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60 dark:bg-background/50">
-                        {session.status}
-                      </span>
-                    </div>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDate(session.created_at)}
-                    </p>
-                  </Link>
-                ))}
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </div>
