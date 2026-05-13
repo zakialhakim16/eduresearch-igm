@@ -95,7 +95,7 @@ Platform ini menggunakan pendekatan **Socratic Learning** — AI tidak menulis k
 | Redis (Upstash) | Response caching |
 | Turborepo | Monorepo management |
 | Vercel | Frontend deployment |
-| Fly.io | Rust services deployment |
+| Railway | Rust doc-parser (Docker) |
 
 ---
 
@@ -274,61 +274,27 @@ docker-compose logs -f
 
 ---
 
-## Deploy produksi (Fly.io + Vercel)
+## Deploy produksi (Railway + Vercel)
 
-### 1. doc-parser (Rust) — Fly.io
+### 1. doc-parser (Rust) — **Railway** (disarankan)
 
-**Prasyarat — install flyctl** (jika perintah `fly` tidak ditemukan):
+Fly.io sering meminta **saldo / kartu** di awal; untuk doc-parser lebih mudah lewat **Railway** (trial/kredit sesuai kebijakan terbaru [Railway](https://railway.app/pricing)).
 
-```bash
-curl -L https://fly.io/install.sh | sh
-# Tambahkan ke PATH (bash), lalu buka terminal baru atau: source ~/.bashrc
-export PATH="$HOME/.fly/bin:$PATH"
-fly version
-```
+1. Daftar / login di [railway.app](https://railway.app).
+2. **New project** → **Deploy from GitHub repo** → pilih `jaki16/eduresearch-igm`.
+3. Buka service yang baru → **Settings**:
+   - **Root Directory** / source path: **`services/doc-parser`** (wajib — `Dockerfile` ada di situ).
+   - Biarkan build memakai **Dockerfile** (ada [`railway.json`](services/doc-parser/railway.json) yang memaksa builder `DOCKERFILE` + healthcheck `/health`).
+4. **Settings → Networking** → **Generate domain** (HTTPS).
+5. Salin URL publik (mis. `https://eduresearch-igm-production-xxxx.up.railway.app`) → set sebagai **`DOC_PARSER_URL`** di Vercel (tanpa slash di akhir).
 
-Dokumentasi resmi: [Install flyctl](https://fly.io/docs/hands-on/install-flyctl/).
+**Port:** Railway meng-inject env **`PORT`**. Service sudah membaca `PORT` + `HOST` di [`main.rs`](services/doc-parser/src/main.rs); tidak perlu set manual kecuali debugging.
 
-```bash
-cd services/doc-parser
-fly auth login
-fly launch --region sin --yes
-# Perubahan berikutnya:
-fly deploy
-```
+**CLI (opsional):** [Railway CLI](https://docs.railway.com/guides/cli) — `railway link` di folder `services/doc-parser`, lalu `railway up`.
 
-**Penjelasan error `region  not found` (ada spasi ganda):** di flyctl, itu artinya **`RegionCode` di launch plan kosong** — bukan karena kode `sin` salah. Biasanya terjadi setelah langkah **placement** (API kapasitas region) mengembalikan region kosong; sering berkorelasi dengan **organisasi belum punya metode pembayaran** (kamu juga melihat peringatan *no payment method*).
+#### Fly.io (opsional)
 
-**Langkah yang disarankan (urutan):**
-
-1. **Tambah metode pembayaran** di [Fly.io → Dashboard → Billing](https://fly.io/dashboard/personal/billing), lalu ulang:
-   ```bash
-   fly launch --region sin --yes
-   ```
-2. **Upgrade flyctl** ke versi terbaru (re-run installer `curl -L https://fly.io/install.sh | sh`).
-3. **Lewati `fly launch`**, buat app lalu deploy (cocok jika `launch` tetap gagal):
-   ```bash
-   cd services/doc-parser
-   fly apps create eduresearch-doc-parser --save -y
-   fly deploy --primary-region sin --ha=false -y
-   ```
-   Ganti nama app di `fly.toml` dan di perintah di atas jika nama sudah dipakai orang lain.
-
-**Jangan** mengetik dua perintah dalam satu baris tanpa `&&` — gunakan baris terpisah atau `fly launch ... && fly deploy` agar deploy tidak jalan kalau launch gagal.
-
-`HOST` / `PORT` default **`0.0.0.0:8001`** (lihat `Dockerfile`). Catat URL publik Fly (mis. `https://eduresearch-doc-parser.fly.dev`) untuk `DOC_PARSER_URL` di Vercel.
-
-Health check: `GET /health`.
-
-#### Deploy otomatis lewat GitHub Actions
-
-Setelah billing Fly aktif dan app sudah dibuat (`app` di `services/doc-parser/fly.toml` sama dengan nama app di Fly):
-
-1. Lokal: `fly auth login` lalu `cd services/doc-parser` dan `fly tokens create deploy` — salin token (boleh berawalan `FlyV1`).
-2. GitHub repo → **Settings → Secrets and variables → Actions** → buat secret **`FLY_API_TOKEN`**.
-3. Push ke `main` yang mengubah `services/doc-parser/**`, atau buka tab **Actions** → workflow **Deploy doc-parser to Fly.io** → **Run workflow**.
-
-Workflow: [`.github/workflows/deploy-doc-parser.yml`](.github/workflows/deploy-doc-parser.yml). Dokumentasi Fly: [Continuous deployment with GitHub Actions](https://fly.io/docs/launch/continuous-deployment-with-github-actions/).
+Jika nanti pakai Fly lagi: [`services/doc-parser/fly.toml`](services/doc-parser/fly.toml) + `fly deploy` dari folder itu. Siapkan billing Fly sesuai kebijakan mereka.
 
 ### 2. Next.js — Vercel
 
@@ -340,7 +306,7 @@ Workflow: [`.github/workflows/deploy-doc-parser.yml`](.github/workflows/deploy-d
 | `NEXT_PUBLIC_SUPABASE_URL` | URL project Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase |
 | `ANTHROPIC_API_KEY` | Fallback AI di serverless (tanpa Ollama) |
-| `DOC_PARSER_URL` | URL Fly.io doc-parser, contoh `https://eduresearch-doc-parser.fly.dev` |
+| `DOC_PARSER_URL` | URL HTTPS Railway doc-parser (bukan `localhost`) |
 | `OLLAMA_URL` | Opsional; di Vercel biasanya dikosongkan |
 
 3. Deploy; uji login, upload dokumen, analisis (memanggil doc-parser), chat.
@@ -349,7 +315,7 @@ Workflow: [`.github/workflows/deploy-doc-parser.yml`](.github/workflows/deploy-d
 
 - [ ] Migrasi `supabase/migrations/001_initial.sql` sudah dijalankan di Supabase
 - [ ] Bucket Storage `documents` ada di Supabase
-- [ ] `DOC_PARSER_URL` mengarah ke Fly.io (HTTPS)
+- [ ] `DOC_PARSER_URL` mengarah ke URL **HTTPS** service doc-parser (Railway)
 - [ ] `ANTHROPIC_API_KEY` terisi di Vercel bila tidak pakai Ollama di server
 
 ---
