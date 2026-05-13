@@ -290,7 +290,55 @@ Fly.io sering meminta **saldo / kartu** di awal; untuk doc-parser lebih mudah le
 
 **Port:** Railway meng-inject env **`PORT`**. Service sudah membaca `PORT` + `HOST` di [`main.rs`](services/doc-parser/src/main.rs); tidak perlu set manual kecuali debugging.
 
-**CLI (opsional):** [Railway CLI](https://docs.railway.com/guides/cli) — `railway link` di folder `services/doc-parser`, lalu `railway up`.
+#### Setup dari terminal (CLI)
+
+Dokumentasi resmi: [Railway CLI](https://docs.railway.com/guides/cli).
+
+1. **Pasang CLI** (sekali per mesin):
+
+   ```bash
+   bash <(curl -fsSL https://railway.com/install.sh)
+   source "$HOME/.railway/env"   # atau buka terminal baru (PATH ditambah di ~/.bashrc)
+   railway --version
+   ```
+
+2. **Login** (buka browser):
+
+   ```bash
+   railway login
+   ```
+
+   Di SSH / tanpa browser: `railway login --browserless` (butuh TTY interaktif). Untuk CI, pakai env **`RAILWAY_TOKEN`** / **`RAILWAY_API_TOKEN`** — lihat [Tokens](https://docs.railway.com/integrations/api#project-token).
+
+3. **Hubungkan folder `services/doc-parser` ke Railway:**
+
+   ```bash
+   cd services/doc-parser
+   ```
+
+   - **Proyek baru:** `railway init --name eduresearch-doc-parser` (membuat project + link folder ini).
+   - **Proyek sudah ada (mis. dibuat dari dashboard):** `railway link` lalu pilih workspace + project + service doc-parser.
+
+4. **Deploy dari mesin lokal** (upload konteks folder ini, build Dockerfile):
+
+   ```bash
+   railway up --detach
+   ```
+
+5. **Domain publik (HTTPS)** — generate lalu salin URL ke Vercel sebagai `DOC_PARSER_URL`:
+
+   ```bash
+   railway domain
+   ```
+
+6. **Cek status / log:**
+
+   ```bash
+   railway status
+   railway logs
+   ```
+
+**Alternatif:** tetap deploy dari **GitHub** di dashboard Railway (root directory `services/doc-parser`); CLI hanya untuk `link`, `logs`, `domain`, dan redeploy tanpa push.
 
 #### Fly.io (opsional)
 
