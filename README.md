@@ -349,6 +349,7 @@ Jika nanti pakai Fly lagi: [`services/doc-parser/fly.toml`](services/doc-parser/
 Service kedua untuk **metadata DOI** lewat [Crossref REST API](https://api.crossref.org/documentation/rest-api). Next.js saat ini belum memanggilnya; siap untuk integrasi berikutnya (mis. validasi DOI di library).
 
 - Kode: [`services/journal-scraper`](services/journal-scraper) — endpoint `GET /health`, `GET /metadata?doi=...` (default lokal **port 8002**).
+- **Next.js:** set **`JOURNAL_SCRAPER_URL`** agar route [`GET /api/journals/metadata`](apps/web/app/api/journals/metadata/route.ts) (`?doi=...`) mem-proxy ke service ini (wajib login).
 - **Crossref polite pool:** set env **`CROSSREF_MAILTO`** (email kontak) di produksi; User-Agent memakainya otomatis.
 - **Railway:** sama seperti doc-parser — root directory **`services/journal-scraper`**, [`railway.json`](services/journal-scraper/railway.json), Dockerfile multi-stage.
 
@@ -369,6 +370,7 @@ PORT=8002 cargo run
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase |
 | `ANTHROPIC_API_KEY` | Fallback AI di serverless (tanpa Ollama) |
 | `DOC_PARSER_URL` | URL HTTPS Railway doc-parser (bukan `localhost`) |
+| `JOURNAL_SCRAPER_URL` | Opsional — URL service journal-scraper untuk `/api/journals/metadata` |
 | `OLLAMA_URL` | Opsional; di Vercel biasanya dikosongkan |
 
 3. Deploy; uji login, upload dokumen, analisis (memanggil doc-parser), chat.
@@ -390,7 +392,7 @@ FASE 1 ✅  Auth UIGM + Onboarding + Dashboard
 FASE 2 ✅  Socratic AI Engine (Ollama + Qwen)
 FASE 3 ✅  Reference Engine (OpenAlex)
 FASE 4 ✅  Rust Service 1: Document Parser
-FASE 5 🔄  Rust Service 2: Journal Scraper (skeleton + Crossref metadata)
+FASE 5 🔄  Rust Service 2: Journal Scraper (Crossref + proxy `/api/journals/metadata`)
 FASE 6 ⏳  Rust Service 3: Vector Cache
 FASE 7 ⏳  React Native Mobile App
 FASE 8 ⏳  Production Deployment
