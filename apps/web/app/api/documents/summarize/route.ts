@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
+import { callAI } from '@/lib/ai'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type SummarizeRequest = {
   document_id: string
-}
-
-type OllamaResponse = {
-  response: string
 }
 
 export async function POST(request: Request) {
@@ -49,15 +46,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Dokumen belum memiliki extracted_text. Analisis dokumen dulu.' },
         { status: 400 }
-      )
-    }
-
-    const ollamaUrl = process.env.OLLAMA_URL
-
-    if (!ollamaUrl) {
-      return NextResponse.json(
-        { error: 'OLLAMA_URL belum diset di .env.local' },
-        { status: 500 }
       )
     }
 
@@ -108,27 +96,17 @@ Berikan catatan kritis, tapi tetap konstruktif.
 Buat 3 pertanyaan yang mendorong mahasiswa memahami dokumennya sendiri.
 `
 
-    const ollamaResponse = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen2.5:7b',
-        prompt,
-        stream: false,
-      }),
-    })
-
-    if (!ollamaResponse.ok) {
-      return NextResponse.json(
-        { error: 'Ollama gagal membuat ringkasan' },
-        { status: 500 }
-      )
+    let aiSummary: string
+    try {
+      aiSummary = await callAI(prompt, { preferFast: true })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'AI gagal membuat ringkasan'
+      if (msg.includes('Tidak ada AI provider')) {
+        return NextResponse.json({ error: msg }, { status: 503 })
+      }
+      console.error(err)
+      return NextResponse.json({ error: 'AI gagal membuat ringkasan' }, { status: 500 })
     }
-
-    const ollamaJson = (await ollamaResponse.json()) as OllamaResponse
-    const aiSummary = ollamaJson.response
 
     const { error: updateError } = await supabase
       .from('documents')

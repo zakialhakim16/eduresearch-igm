@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('paper_references')
       .insert({
+        user_id: user.id,
         session_id: sessionId,
         judul: paper.title,
         penulis: paper.authors,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         doi: paper.doi,
         url: paper.url,
         abstrak: paper.abstract,
-        sitasi_count: paper.cited_by_count
+        sitasi_count: paper.cited_by_count,
       })
       .select()
       .single()

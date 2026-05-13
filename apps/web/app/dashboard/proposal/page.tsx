@@ -321,7 +321,7 @@ export default function ProposalPage() {
   }
 
   return (
-    <div className="ai-chat-surface flex min-h-0 flex-1 flex-col overflow-hidden bg-background/90">
+    <div className="ai-chat-surface flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background/90">
       <header className="shrink-0 z-30 border-b border-border/50 bg-background/80 px-4 py-3.5 shadow-sm shadow-black/[0.02] backdrop-blur-xl md:px-6 dark:shadow-black/20">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <div className="min-w-0">
@@ -344,74 +344,76 @@ export default function ProposalPage() {
         </div>
       </header>
 
-      <main className="chat-scroll-left min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain">
-        <div className="mx-auto max-w-3xl px-3 py-5 md:px-6 md:py-8 space-y-6 md:space-y-8">
-          {messages.map((message, index) => {
-            const isUser = message.role === 'user'
+      <main className="chat-scroll-left min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain scroll-smooth">
+        <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-end px-3 py-5 md:px-6 md:py-8">
+          <div className="space-y-6 md:space-y-8">
+            {messages.map((message, index) => {
+              const isUser = message.role === 'user'
 
-            return (
-              <div
-                key={`${message.role}-${index}`}
-                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
+              return (
                 <div
-                  className={`flex max-w-[94%] gap-3 md:max-w-[88%] ${
-                    isUser ? 'flex-row-reverse' : 'flex-row'
-                  }`}
+                  key={`${message.role}-${index}`}
+                  className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  {!isUser && (
-                    <div
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/85 text-[10px] font-bold text-primary-foreground shadow-md shadow-primary/25"
-                      aria-hidden
-                    >
-                      AI
-                    </div>
-                  )}
                   <div
-                    className={`min-w-0 flex-1 rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                      isUser
-                        ? 'whitespace-pre-wrap bg-gradient-to-br from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20'
-                        : 'border border-border/80 bg-card/90 text-foreground shadow-sm backdrop-blur-sm dark:bg-card/70'
+                    className={`flex max-w-[94%] gap-3 md:max-w-[88%] ${
+                      isUser ? 'flex-row-reverse' : 'flex-row'
                     }`}
                   >
                     {!isUser && (
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                        EduResearch AI
-                      </p>
-                    )}
-
-                    {message.content ? (
-                      isUser ? (
-                        <span>{message.content}</span>
-                      ) : (
-                        <AssistantMarkdown content={message.content} />
-                      )
-                    ) : (
-                      <div className="space-y-2 pt-0.5">
-                        <div className="typing-shimmer h-2.5 w-3/4 rounded-full" />
-                        <div className="typing-shimmer h-2.5 w-1/2 rounded-full opacity-70" />
-                        <p className="text-xs text-muted-foreground">
-                          Menyusun jawaban...
-                        </p>
+                      <div
+                        className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/85 text-[10px] font-bold text-primary-foreground shadow-md shadow-primary/25"
+                        aria-hidden
+                      >
+                        AI
                       </div>
                     )}
+                    <div
+                      className={`min-w-0 flex-1 rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        isUser
+                          ? 'whitespace-pre-wrap bg-gradient-to-br from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20'
+                          : 'border border-border/80 bg-card/90 text-foreground shadow-sm backdrop-blur-sm dark:bg-card/70'
+                      }`}
+                    >
+                      {!isUser && (
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                          EduResearch AI
+                        </p>
+                      )}
+
+                      {message.content ? (
+                        isUser ? (
+                          <span>{message.content}</span>
+                        ) : (
+                          <AssistantMarkdown content={message.content} />
+                        )
+                      ) : (
+                        <div className="space-y-2 pt-0.5">
+                          <div className="typing-shimmer h-2.5 w-3/4 rounded-full" />
+                          <div className="typing-shimmer h-2.5 w-1/2 rounded-full opacity-70" />
+                          <p className="text-xs text-muted-foreground">
+                            Menyusun jawaban...
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+              )
+            })}
+
+            {error && (
+              <div className="rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm backdrop-blur-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+                {error}
               </div>
-            )
-          })}
+            )}
 
-          {error && (
-            <div className="rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-sm backdrop-blur-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-              {error}
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </main>
 
-      <footer className="shrink-0 border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4 pb-24 md:pb-4">
+      <footer className="shrink-0 border-t border-border/60 bg-background/90 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-6">
         <div className="mx-auto max-w-3xl space-y-3">
           <form
             onSubmit={handleSubmit}

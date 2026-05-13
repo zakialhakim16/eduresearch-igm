@@ -84,38 +84,40 @@
   --sidebar-ring: oklch(0.45 0.15 230);
 }
 
+/* Default app shell: gelap mirip ChatGPT (#171717 sidebar, #212121 main, aksen hijau-teal) */
 .dark {
-  --background: oklch(0.13 0.02 265);
-  --foreground: oklch(0.97 0.01 250);
-  --card: oklch(0.18 0.025 265);
-  --card-foreground: oklch(0.97 0.01 250);
-  --popover: oklch(0.18 0.025 265);
-  --popover-foreground: oklch(0.97 0.01 250);
-  --primary: oklch(0.72 0.16 262);
-  --primary-foreground: oklch(0.14 0.04 265);
-  --secondary: oklch(0.24 0.04 265);
-  --secondary-foreground: oklch(0.96 0.01 250);
-  --muted: oklch(0.22 0.03 265);
-  --muted-foreground: oklch(0.68 0.03 260);
-  --accent: oklch(0.55 0.14 165);
-  --accent-foreground: oklch(0.98 0.01 165);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.72 0.16 262);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --background: oklch(0.22 0.004 260);
+  --foreground: oklch(0.93 0.006 250);
+  --card: oklch(0.27 0.006 260);
+  --card-foreground: oklch(0.93 0.006 250);
+  --popover: oklch(0.27 0.006 260);
+  --popover-foreground: oklch(0.93 0.006 250);
+  --primary: oklch(0.62 0.12 166);
+  --primary-foreground: oklch(0.99 0.01 166);
+  --secondary: oklch(0.32 0.012 260);
+  --secondary-foreground: oklch(0.93 0.006 250);
+  --muted: oklch(0.3 0.01 260);
+  --muted-foreground: oklch(0.66 0.02 260);
+  --accent: oklch(0.34 0.02 260);
+  --accent-foreground: oklch(0.93 0.006 250);
+  --destructive: oklch(0.65 0.2 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.12 166);
+  --chart-1: oklch(0.62 0.12 166);
+  --chart-2: oklch(0.7 0.08 250);
+  --chart-3: oklch(0.55 0 0);
+  --chart-4: oklch(0.45 0 0);
+  --chart-5: oklch(0.35 0 0);
+  --sidebar: oklch(0.17 0.004 260);
+  --sidebar-foreground: oklch(0.93 0.006 250);
+  --sidebar-primary: oklch(0.62 0.12 166);
+  --sidebar-primary-foreground: oklch(0.99 0.01 166);
+  --sidebar-accent: oklch(0.26 0.01 260);
+  --sidebar-accent-foreground: oklch(0.93 0.006 250);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.62 0.12 166);
 }
 
 @layer base {
@@ -161,19 +163,14 @@
   .dark .dashboard-app-bg {
     background-image:
       radial-gradient(
-        ellipse 130% 90% at 95% -15%,
-        oklch(0.48 0.22 262 / 0.22),
-        transparent 52%
+        ellipse 120% 80% at 90% -10%,
+        oklch(0.55 0.14 166 / 0.08),
+        transparent 50%
       ),
       radial-gradient(
-        ellipse 100% 70% at -5% 50%,
-        oklch(0.4 0.1 200 / 0.14),
+        ellipse 90% 60% at -5% 60%,
+        oklch(0.5 0.06 260 / 0.06),
         transparent 48%
-      ),
-      radial-gradient(
-        ellipse 55% 45% at 40% 105%,
-        oklch(0.45 0.2 280 / 0.12),
-        transparent 55%
       );
   }
 
@@ -194,14 +191,14 @@
   .dark .ai-chat-surface {
     background-image:
       radial-gradient(
-        ellipse 100% 80% at 50% -40%,
-        oklch(0.55 0.18 260 / 0.15),
-        transparent 55%
+        ellipse 100% 70% at 50% -35%,
+        oklch(0.55 0.12 166 / 0.07),
+        transparent 52%
       ),
       radial-gradient(
-        ellipse 80% 50% at 100% 100%,
-        oklch(0.5 0.12 240 / 0.1),
-        transparent 50%
+        ellipse 70% 45% at 100% 100%,
+        oklch(0.48 0.04 260 / 0.05),
+        transparent 48%
       );
   }
 

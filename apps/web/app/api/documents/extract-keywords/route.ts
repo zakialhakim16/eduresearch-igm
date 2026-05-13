@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
+import { callAI } from '@/lib/ai'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type ExtractKeywordsRequest = {
   document_id: string
-}
-
-type OllamaResponse = {
-  response: string
 }
 
 type KeywordResult = {
@@ -73,15 +70,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const ollamaUrl = process.env.OLLAMA_URL
-
-    if (!ollamaUrl) {
-      return NextResponse.json(
-        { error: 'OLLAMA_URL belum diset di .env.local' },
-        { status: 500 }
-      )
-    }
-
     const textContext = document.extracted_text
       ? document.extracted_text.slice(0, 7000)
       : ''
@@ -128,33 +116,25 @@ Format output wajib:
 }
 `
 
-    const ollamaResponse = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen2.5:7b',
-        prompt,
-        stream: false,
-      }),
-    })
-
-    if (!ollamaResponse.ok) {
-      return NextResponse.json(
-        { error: 'Ollama gagal mengekstrak keyword' },
-        { status: 500 }
-      )
+    let rawResponse: string
+    try {
+      rawResponse = await callAI(prompt, { preferFast: true })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'AI gagal mengekstrak keyword'
+      if (msg.includes('Tidak ada AI provider')) {
+        return NextResponse.json({ error: msg }, { status: 503 })
+      }
+      console.error(err)
+      return NextResponse.json({ error: 'AI gagal mengekstrak keyword' }, { status: 500 })
     }
 
-    const ollamaJson = (await ollamaResponse.json()) as OllamaResponse
-    const parsed = extractJsonFromText(ollamaJson.response)
+    const parsed = extractJsonFromText(rawResponse)
 
     if (!parsed || !Array.isArray(parsed.keywords)) {
       return NextResponse.json(
         {
           error: 'Format hasil AI tidak valid',
-          raw_response: ollamaJson.response,
+          raw_response: rawResponse,
         },
         { status: 500 }
       )

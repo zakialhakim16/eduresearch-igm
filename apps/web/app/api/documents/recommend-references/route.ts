@@ -54,28 +54,23 @@ function normalizeQuery(query: string) {
     .trim()
 }
 
-function buildFallbackQueries(
+function buildSearchQueries(
   researchQuery: string | null,
   keywords: string[] | null
-) {
+): string[] {
   const safeKeywords = keywords ?? []
+  const queries: string[] = []
 
-  const queries = [
-    researchQuery,
-    safeKeywords.slice(0, 5).join(' '),
-    safeKeywords.slice(0, 4).join(' '),
-    safeKeywords.slice(0, 3).join(' '),
-    'support vector machine chi-square phishing',
-    'phishing website detection support vector machine',
-    'chi-square feature selection phishing detection',
-    'support vector machine phishing website',
-    'machine learning phishing website detection',
-    'phishing detection fintech cybersecurity',
-  ]
-    .filter(Boolean)
-    .map((query) => normalizeQuery(query as string))
+  if (researchQuery) queries.push(researchQuery)
+  if (safeKeywords.length >= 5) queries.push(safeKeywords.slice(0, 5).join(' '))
+  if (safeKeywords.length >= 4) queries.push(safeKeywords.slice(0, 4).join(' '))
+  if (safeKeywords.length >= 3) queries.push(safeKeywords.slice(0, 3).join(' '))
+  if (safeKeywords.length >= 2) queries.push(safeKeywords.slice(1, 4).join(' '))
+  if (queries.length === 0 && safeKeywords.length > 0) {
+    queries.push(safeKeywords.join(' '))
+  }
 
-  return Array.from(new Set(queries))
+  return Array.from(new Set(queries.filter(Boolean).map((q) => normalizeQuery(q))))
 }
 
 async function searchOpenAlex(query: string) {
@@ -163,12 +158,19 @@ export async function POST(request: Request) {
       )
     }
 
-    const fallbackQueries = buildFallbackQueries(
+    if (!document.research_query && !document.research_keywords?.length) {
+      return NextResponse.json(
+        { error: 'Dokumen belum memiliki keywords. Jalankan ekstrak keyword dulu.' },
+        { status: 400 }
+      )
+    }
+
+    const searchQueries = buildSearchQueries(
       document.research_query,
       document.research_keywords
     )
 
-    if (fallbackQueries.length === 0) {
+    if (searchQueries.length === 0) {
       return NextResponse.json(
         {
           error:
@@ -181,7 +183,7 @@ export async function POST(request: Request) {
     let allReferences: ReturnType<typeof mapOpenAlexWorks> = []
     const triedQueries: string[] = []
 
-    for (const query of fallbackQueries) {
+    for (const query of searchQueries) {
       triedQueries.push(query)
 
       const works = await searchOpenAlex(query)

@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
+import { callAI } from '@/lib/ai'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type ReferenceGapRequest = {
   document_id: string
-}
-
-type OllamaResponse = {
-  response: string
 }
 
 export async function POST(request: Request) {
@@ -70,15 +67,6 @@ export async function POST(request: Request) {
             'Belum ada referensi tersimpan. Simpan minimal 1 referensi dulu.',
         },
         { status: 400 }
-      )
-    }
-
-    const ollamaUrl = process.env.OLLAMA_URL
-
-    if (!ollamaUrl) {
-      return NextResponse.json(
-        { error: 'OLLAMA_URL belum diset di .env.local' },
-        { status: 500 }
       )
     }
 
@@ -155,27 +143,20 @@ Berikan 5-8 keyword pencarian yang lebih tepat.
 Sebutkan 3 langkah berikutnya yang harus dilakukan mahasiswa.
 `
 
-    const ollamaResponse = await fetch(`${ollamaUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'qwen2.5:7b',
-        prompt,
-        stream: false,
-      }),
-    })
-
-    if (!ollamaResponse.ok) {
+    let analysis: string
+    try {
+      analysis = await callAI(prompt, { preferFast: true })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'AI gagal menganalisis gap referensi'
+      if (msg.includes('Tidak ada AI provider')) {
+        return NextResponse.json({ error: msg }, { status: 503 })
+      }
+      console.error(err)
       return NextResponse.json(
-        { error: 'Ollama gagal menganalisis gap referensi' },
+        { error: 'AI gagal menganalisis gap referensi' },
         { status: 500 }
       )
     }
-
-    const ollamaJson = (await ollamaResponse.json()) as OllamaResponse
-    const analysis = ollamaJson.response
 
     const { error: updateError } = await supabase
       .from('documents')

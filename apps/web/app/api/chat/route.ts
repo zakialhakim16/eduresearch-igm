@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { streamWithOllama, OllamaMessage } from '@/lib/ollama'
-import { getProposalSystemPrompt } from '@/lib/prompts'
+import {
+  streamAI,
+  createTrackingStream,
+  AIMessage,
+  getStreamingModelUsedLabel,
+} from '@/lib/ai'
+import { getProposalSystemPrompt, buildChatBehaviorGuard } from '@/lib/prompts'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type ChatMessage = {
@@ -48,32 +53,15 @@ type SavedReference = {
   sitasi_count: number | null
 }
 
-const CHAT_BEHAVIOR_GUARD = `
-ATURAN GLOBAL WAJIB:
-- Selalu jawab dalam Bahasa Indonesia.
-- Gunakan sapaan "kamu", bukan "Anda".
-- Jangan pernah menggunakan Bahasa Mandarin, Chinese, Hanzi, atau bahasa lain selain Bahasa Indonesia.
-- Istilah teknis bahasa Inggris seperti Support Vector Machine, feature selection, phishing, dataset, dan cross validation boleh digunakan jika relevan dengan dokumen atau pertanyaan user.
-- Gunakan format Markdown yang rapi agar mudah dibaca (heading singkat, daftar bernomor atau bullet jika perlu).
-- Untuk jawaban panjang, gunakan heading singkat seperti "Langkah Awal", "Pertanyaan Kunci", atau "Saran Berikutnya".
-- Jangan terlalu banyak memakai bold; jangan menampilkan simbol markdown berlebihan.
-- Jika user meminta evaluasi seperti "mana yang paling cocok", "referensi mana", "bagian mana", atau "apa yang harus diperkuat", berikan evaluasi langsung terlebih dahulu.
-- Jangan hanya membalas dengan daftar pertanyaan.
-- Format jawaban untuk evaluasi referensi:
-  1. Jawaban langsung
-  2. Alasan kecocokan
-  3. Keterbatasan referensi
-  4. Referensi tambahan yang masih perlu dicari
-  5. Maksimal 2 pertanyaan Socratic lanjutan.
-- Jika referensi yang tersedia kurang cocok, katakan dengan jelas dan sopan.
-- Jangan mengarang isi paper di luar judul, abstrak, metadata, dan konteks yang tersedia.
-- Jangan membuat sitasi palsu.
-- Jika user bertanya "referensi mana yang cocok", berikan evaluasi langsung, bukan hanya pertanyaan.
-- Untuk setiap referensi, nilai apakah cocok untuk latar belakang, metode, pembahasan, atau hanya konteks umum.
-- Jika referensi kurang cocok untuk metode yang dibahas user, jelaskan dengan sopan.
-- Setelah evaluasi, ajukan maksimal 2 pertanyaan Socratic lanjutan.
-- Kaitkan saran dengan konteks dokumen dan referensi yang diberikan sistem jika ada.
-`.trim()
+type SessionDocumentRow = {
+  nama_file: string
+  jenis: string
+  structure: DocumentStructure | null
+  ai_summary: string | null
+  extracted_text: string | null
+  research_keywords: string[] | null
+  research_query: string | null
+}
 
 const CHAT_BEHAVIOR_GUARD_GENERAL = `
 ATURAN GLOBAL WAJIB:
@@ -94,7 +82,7 @@ MODE BIMBINGAN BARU:
 - Ini adalah sesi baru tanpa dokumen.
 - Jangan gunakan konteks dokumen lama.
 - Jangan gunakan referensi lama.
-- Jangan menyebut topik spesifik seperti SVM, phishing, Chi-Square, fintech, atau dataset Kaggle kecuali user menyebutnya sendiri.
+- Jangan menyebut topik penelitian spesifik kecuali user menyebutnya sendiri.
 - Jika user meminta rekomendasi judul skripsi tapi belum menyebut bidang minat, jangan langsung memberi judul final.
 - Tanyakan dulu minat bidang, jenis penelitian, masalah yang ingin diselesaikan, dan preferensi metode.
 - Jika ingin memberi contoh, berikan contoh yang beragam dari beberapa bidang, bukan hanya satu topik.
@@ -122,18 +110,12 @@ function formatChapters(chapters?: Array<string | ChapterInfo>) {
         meta.push(`baris ${chapter.start_line}`)
       }
 
-      return `${chapter.title ?? '-'}${meta.length > 0 ? ` (${meta.join(', ')})` : ''}` 
+      return `${chapter.title ?? '-'}${meta.length > 0 ? ` (${meta.join(', ')})` : ''}`
     })
     .join(', ')
 }
 
-function buildDocumentContext(document: {
-  nama_file: string
-  jenis: string
-  structure: DocumentStructure | null
-  ai_summary: string | null
-  extracted_text: string | null
-}) {
+function buildDocumentContext(document: SessionDocumentRow) {
   const textPreview = document.extracted_text
     ? document.extracted_text.slice(0, 5000)
     : 'Tidak ada extracted_text.'
@@ -226,9 +208,7 @@ ATURAN KHUSUS BERDASARKAN REFERENSI:
   2. metode,
   3. pembahasan,
   4. atau hanya konteks umum.
-- Jika referensi kurang relevan untuk metode ini, jelaskan bahwa referensi tersebut kurang spesifik.
-- Untuk dokumen user ini, metode inti adalah SVM, Chi-Square feature selection, phishing website detection, dataset Kaggle, dan Stratified K-Fold Cross Validation.
-- Referensi yang paling cocok untuk metode adalah referensi yang membahas langsung machine learning classification, phishing detection, feature selection, SVM, atau evaluasi model.
+- Jika referensi kurang relevan dengan fokus dokumen user, jelaskan dengan sopan.
 - Setelah evaluasi, ajukan maksimal 2 pertanyaan Socratic lanjutan.
 `.trim()
 }
@@ -255,6 +235,7 @@ export async function POST(req: NextRequest) {
 
     let documentContext = ''
     let savedReferencesContext = ''
+    let sessionDocument: SessionDocumentRow | null = null
 
     if (sessionId) {
       const { data: session } = await supabase
@@ -267,13 +248,16 @@ export async function POST(req: NextRequest) {
       if (session?.document_id) {
         const { data: document } = await supabase
           .from('documents')
-          .select('nama_file, jenis, structure, ai_summary, extracted_text')
+          .select(
+            'nama_file, jenis, structure, ai_summary, extracted_text, research_keywords, research_query'
+          )
           .eq('id', session.document_id)
           .eq('user_id', user.id)
           .single()
 
         if (document) {
-          documentContext = buildDocumentContext(document)
+          sessionDocument = document as SessionDocumentRow
+          documentContext = buildDocumentContext(sessionDocument)
         }
 
         const { data: savedReferences } = await supabase
@@ -298,14 +282,24 @@ export async function POST(req: NextRequest) {
       step || 'eksplorasi_topik'
     )
 
-    const systemPrompt = [
-      baseSystemPrompt,
-      sessionId ? documentContext : NEW_GUIDANCE_GUARD,
-      sessionId ? savedReferencesContext : '',
-      sessionId ? CHAT_BEHAVIOR_GUARD : CHAT_BEHAVIOR_GUARD_GENERAL,
-    ]
-      .filter(Boolean)
-      .join('\n\n')
+    const behaviorGuard = buildChatBehaviorGuard({
+      keywords: sessionDocument?.research_keywords ?? null,
+      researchQuery: sessionDocument?.research_query ?? null,
+      docType: (sessionDocument?.structure as DocumentStructure)?.detected_type ?? null,
+    })
+
+    const systemPrompt = sessionId
+      ? [
+          baseSystemPrompt,
+          documentContext,
+          savedReferencesContext,
+          behaviorGuard,
+        ]
+          .filter(Boolean)
+          .join('\n\n')
+      : [baseSystemPrompt, NEW_GUIDANCE_GUARD, CHAT_BEHAVIOR_GUARD_GENERAL]
+          .filter(Boolean)
+          .join('\n\n')
 
     const lastUserMessage = getLastUserMessage(messages)
 
@@ -319,69 +313,28 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const fullMessages: OllamaMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages,
-    ]
+    const claudeMessages: AIMessage[] = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
 
-    const ollamaStream = await streamWithOllama(fullMessages)
-
-    const encoder = new TextEncoder()
-
-    const readable = new ReadableStream({
-      async start(controller) {
-        const reader = ollamaStream.getReader()
-        const decoder = new TextDecoder()
-        let fullResponse = ''
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-
-            const chunk = decoder.decode(value)
-            const lines = chunk.split('\n').filter(Boolean)
-
-            for (const line of lines) {
-              try {
-                const parsed = JSON.parse(line)
-
-                if (parsed.message?.content) {
-                  fullResponse += parsed.message.content
-
-                  controller.enqueue(
-                    encoder.encode(
-                      `data: ${JSON.stringify({
-                        content: parsed.message.content,
-                      })}\n\n`
-                    )
-                  )
-                }
-              } catch {
-                // Abaikan line yang bukan JSON valid
-              }
-            }
-          }
-
-          if (sessionId && fullResponse.trim()) {
-            await supabase.from('messages').insert({
-              session_id: sessionId,
-              role: 'assistant',
-              content: fullResponse,
-              model_used: 'qwen2.5:7b',
-              tokens_used: 0,
-            })
-          }
-
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
-        } catch (error) {
-          controller.error(error)
-        }
-      },
+    const modelUsedLabel = await getStreamingModelUsedLabel()
+    const aiStream = await streamAI(claudeMessages, systemPrompt)
+    const trackedStream = createTrackingStream(aiStream, async (fullText) => {
+      if (sessionId && fullText.trim()) {
+        await supabase.from('messages').insert({
+          session_id: sessionId,
+          role: 'assistant',
+          content: fullText,
+          model_used: modelUsedLabel,
+          tokens_used: 0,
+        })
+      }
     })
 
-    return new Response(readable, {
+    return new Response(trackedStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -390,6 +343,11 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('Chat error:', error)
+
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    if (message.includes('Tidak ada AI provider')) {
+      return NextResponse.json({ error: message }, { status: 503 })
+    }
 
     return NextResponse.json(
       { error: 'Internal server error' },
