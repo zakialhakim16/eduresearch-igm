@@ -320,6 +320,16 @@ fly deploy
 
 Health check: `GET /health`.
 
+#### Deploy otomatis lewat GitHub Actions
+
+Setelah billing Fly aktif dan app sudah dibuat (`app` di `services/doc-parser/fly.toml` sama dengan nama app di Fly):
+
+1. Lokal: `fly auth login` lalu `cd services/doc-parser` dan `fly tokens create deploy` — salin token (boleh berawalan `FlyV1`).
+2. GitHub repo → **Settings → Secrets and variables → Actions** → buat secret **`FLY_API_TOKEN`**.
+3. Push ke `main` yang mengubah `services/doc-parser/**`, atau buka tab **Actions** → workflow **Deploy doc-parser to Fly.io** → **Run workflow**.
+
+Workflow: [`.github/workflows/deploy-doc-parser.yml`](.github/workflows/deploy-doc-parser.yml). Dokumentasi Fly: [Continuous deployment with GitHub Actions](https://fly.io/docs/launch/continuous-deployment-with-github-actions/).
+
 ### 2. Next.js — Vercel
 
 1. Import repo di [Vercel](https://vercel.com), set **Root Directory** ke `apps/web` (penting untuk npm workspaces).
