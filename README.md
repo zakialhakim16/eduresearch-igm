@@ -274,6 +274,76 @@ docker-compose logs -f
 
 ---
 
+## Deploy produksi (Fly.io + Vercel)
+
+### 1. doc-parser (Rust) — Fly.io
+
+**Prasyarat — install flyctl** (jika perintah `fly` tidak ditemukan):
+
+```bash
+curl -L https://fly.io/install.sh | sh
+# Tambahkan ke PATH (bash), lalu buka terminal baru atau: source ~/.bashrc
+export PATH="$HOME/.fly/bin:$PATH"
+fly version
+```
+
+Dokumentasi resmi: [Install flyctl](https://fly.io/docs/hands-on/install-flyctl/).
+
+```bash
+cd services/doc-parser
+fly auth login
+fly launch --region sin --yes
+# Perubahan berikutnya:
+fly deploy
+```
+
+**Penjelasan error `region  not found` (ada spasi ganda):** di flyctl, itu artinya **`RegionCode` di launch plan kosong** — bukan karena kode `sin` salah. Biasanya terjadi setelah langkah **placement** (API kapasitas region) mengembalikan region kosong; sering berkorelasi dengan **organisasi belum punya metode pembayaran** (kamu juga melihat peringatan *no payment method*).
+
+**Langkah yang disarankan (urutan):**
+
+1. **Tambah metode pembayaran** di [Fly.io → Dashboard → Billing](https://fly.io/dashboard/personal/billing), lalu ulang:
+   ```bash
+   fly launch --region sin --yes
+   ```
+2. **Upgrade flyctl** ke versi terbaru (re-run installer `curl -L https://fly.io/install.sh | sh`).
+3. **Lewati `fly launch`**, buat app lalu deploy (cocok jika `launch` tetap gagal):
+   ```bash
+   cd services/doc-parser
+   fly apps create eduresearch-doc-parser --save -y
+   fly deploy --primary-region sin --ha=false -y
+   ```
+   Ganti nama app di `fly.toml` dan di perintah di atas jika nama sudah dipakai orang lain.
+
+**Jangan** mengetik dua perintah dalam satu baris tanpa `&&` — gunakan baris terpisah atau `fly launch ... && fly deploy` agar deploy tidak jalan kalau launch gagal.
+
+`HOST` / `PORT` default **`0.0.0.0:8001`** (lihat `Dockerfile`). Catat URL publik Fly (mis. `https://eduresearch-doc-parser.fly.dev`) untuk `DOC_PARSER_URL` di Vercel.
+
+Health check: `GET /health`.
+
+### 2. Next.js — Vercel
+
+1. Import repo di [Vercel](https://vercel.com), set **Root Directory** ke `apps/web` (penting untuk npm workspaces).
+2. **Environment variables** (Production + Preview):
+
+| Variable | Keterangan |
+|----------|------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL project Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase |
+| `ANTHROPIC_API_KEY` | Fallback AI di serverless (tanpa Ollama) |
+| `DOC_PARSER_URL` | URL Fly.io doc-parser, contoh `https://eduresearch-doc-parser.fly.dev` |
+| `OLLAMA_URL` | Opsional; di Vercel biasanya dikosongkan |
+
+3. Deploy; uji login, upload dokumen, analisis (memanggil doc-parser), chat.
+
+### 3. Checklist singkat
+
+- [ ] Migrasi `supabase/migrations/001_initial.sql` sudah dijalankan di Supabase
+- [ ] Bucket Storage `documents` ada di Supabase
+- [ ] `DOC_PARSER_URL` mengarah ke Fly.io (HTTPS)
+- [ ] `ANTHROPIC_API_KEY` terisi di Vercel bila tidak pakai Ollama di server
+
+---
+
 ## Roadmap
 
 ```
