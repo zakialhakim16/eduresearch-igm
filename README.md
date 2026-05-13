@@ -1,434 +1,275 @@
-<div align="center">
-
 # EduResearch AI
 
-**Platform Bimbingan Riset Akademik Berbasis AI untuk Mahasiswa UIGM**
+Platform bimbingan riset akademik berbasis AI untuk mahasiswa Universitas Indo Global Mandiri (UIGM) Palembang.
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=flat-square&logo=typescript)](https://typescriptlang.org)
-[![Rust](https://img.shields.io/badge/Rust-1.75-e64a19?style=flat-square&logo=rust)](https://rustlang.org)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?style=flat-square&logo=supabase)](https://supabase.com)
-[![Ollama](https://img.shields.io/badge/Ollama-Qwen2.5-black?style=flat-square)](https://ollama.ai)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+EduResearch AI dirancang sebagai mentor riset digital: membantu mahasiswa mengeksplorasi topik, membaca dokumen, mencari referensi, dan berdiskusi secara Socratic tanpa menggantikan proses berpikir dan penulisan mahasiswa.
 
-[Demo](#) · [Dokumentasi](#dokumentasi) · [Kontribusi](#kontribusi) · [Roadmap](#roadmap)
+## Status
 
-</div>
+Proyek ini sedang aktif dikembangkan sebagai monorepo. Fokus implementasi saat ini berada pada aplikasi web, Supabase, dan dua service Rust pendukung:
 
----
+- `apps/web`: aplikasi Next.js utama
+- `services/doc-parser`: service analisis dokumen
+- `services/journal-scraper`: service metadata DOI/Crossref
+- `supabase/migrations`: skema database dan RPC Supabase
 
-## Tentang Project
-
-EduResearch AI adalah platform ekosistem riset berbasis kecerdasan buatan yang dirancang khusus untuk mahasiswa **Universitas Indo Global Mandiri (UIGM) Palembang**. Platform ini hadir sebagai **mentor riset digital** yang membimbing mahasiswa dalam proses penulisan karya ilmiah — mulai dari proposal, skripsi/tugas akhir, hingga publikasi jurnal ilmiah.
-
-> **Filosofi Utama:** *Membimbing, bukan menggantikan.* AI bertanya, mahasiswa berpikir dan berkembang.
-
-Platform ini menggunakan pendekatan **Socratic Learning** — AI tidak menulis konten untuk mahasiswa, melainkan mengajukan pertanyaan yang mendorong mahasiswa menemukan dan mengembangkan ide mereka sendiri.
-
----
+Beberapa folder eksperimental/roadmap dapat muncul secara lokal, tetapi README ini hanya mendokumentasikan bagian yang sudah menjadi alur utama proyek.
 
 ## Fitur Utama
 
-### Modul Proposal Research
-- Eksplorasi topik penelitian dengan panduan Socratic
-- Identifikasi gap penelitian secara sistematis
-- Panduan rumusan masalah, tujuan, dan metodologi
-- Context-first onboarding: upload draft yang ada atau mulai dari nol
+- Auth mahasiswa berbasis Supabase Auth
+- Dashboard riset untuk dokumen, proposal, referensi, dan pengaturan
+- Upload dokumen akademik PDF/DOCX
+- Analisis dokumen melalui service `doc-parser`
+- Ringkasan, ekstraksi keyword, dan analisis gap referensi berbasis AI
+- Chat bimbingan Socratic dengan riwayat sesi
+- Reference engine berbasis OpenAlex
+- Penyimpanan referensi ke library dokumen
+- Proxy metadata jurnal melalui `journal-scraper`
 
-### Modul Skripsi & Tugas Akhir
-- Bimbingan per-bab (BAB I hingga BAB V)
-- Mapping teori dan referensi akademik
-- Panduan interpretasi data
-- Simulasi mock defense
+## Filosofi Produk
 
-### Modul Jurnal & Publikasi
-- Targeting jurnal SINTA 1-6 (nasional)
-- Panduan jurnal internasional (Scopus, IEEE, Springer)
-- Abstract optimizer & format IMRaD
-- Panduan respon reviewer
+EduResearch AI mengikuti prinsip:
 
-### Reference Engine
-- Integrasi multi-platform: OpenAlex, Semantic Scholar, DOAJ, arXiv
-- 250 juta+ karya ilmiah tersedia
-- Filter: tahun, open access, bidang ilmu
-- Simpan referensi ke library pribadi
+> Membimbing, bukan menggantikan.
 
-### Research Journey Log
-- Rekam jejak proses berpikir dari awal hingga selesai
-- Visualisasi progress per modul
-- Portofolio riset mahasiswa
-
----
+AI boleh membantu mahasiswa menilai argumen, menemukan celah, menyusun pertanyaan, dan memahami referensi. AI tidak dimaksudkan untuk menuliskan skripsi, proposal, atau artikel ilmiah sebagai pengganti kerja akademik mahasiswa.
 
 ## Tech Stack
 
-### Frontend & Backend
-| Teknologi | Versi | Fungsi |
-|---|---|---|
-| Next.js | 14 | Frontend + API Routes |
-| TypeScript | 5.0 | Type-safe development |
-| Tailwind CSS | 3.4 | Styling |
-| Shadcn/UI | Latest | UI Components |
-| Zustand | 4.x | State Management |
-| Zod | 3.x | Schema Validation |
+### Web App
 
-### AI & Machine Learning
+| Teknologi | Versi saat ini | Fungsi |
+| --- | --- | --- |
+| Next.js | 16.2.6 | App Router, Server Components, API Routes |
+| React | 19.2.4 | UI |
+| TypeScript | 5.x | Type-safe development |
+| Tailwind CSS | 4.x | Styling |
+| Supabase SSR | 0.10.x | Auth dan session cookies |
+| Supabase JS | 2.105.x | Database, Auth, Storage |
+| Vercel AI SDK | 6.x | Orkestrasi AI |
+| Zustand | 5.x | State management |
+| Zod | 4.x | Validasi data |
+
+### AI dan Data
+
 | Teknologi | Fungsi |
-|---|---|
-| Ollama | LLM Runtime (lokal) |
-| Qwen 2.5 14B | Model utama (Bahasa Indonesia) |
-| Vercel AI SDK | Streaming response |
-| pgvector | Vector similarity search |
+| --- | --- |
+| Ollama | LLM lokal saat development |
+| Anthropic API | Fallback AI untuk production/serverless |
+| OpenAlex | Pencarian paper akademik |
+| Supabase PostgreSQL | Database utama |
+| Supabase Storage | Penyimpanan dokumen |
+| pgvector | Ekstensi vector di Supabase |
 
-### Rust Microservices
+### Services
+
 | Service | Teknologi | Fungsi |
-|---|---|---|
-| doc-parser | Actix-web + lopdf | Document intelligence |
-| journal-scraper | Actix-web + reqwest | Metadata DOI (Crossref) |
-| ai-cache | Tonic + candle | Vector search & caching |
+| --- | --- | --- |
+| `doc-parser` | Rust | Parsing dan analisis dokumen |
+| `journal-scraper` | Rust | Metadata DOI via Crossref |
 
-### Infrastructure
-| Teknologi | Fungsi |
-|---|---|
-| Supabase | PostgreSQL + Auth + Storage |
-| Docker + Compose | Container orchestration |
-| Redis (Upstash) | Response caching |
-| Turborepo | Monorepo management |
-| Vercel | Frontend deployment |
-| Railway | Rust doc-parser (Docker) |
+## Struktur Repo
 
----
-
-## Arsitektur
-
-```
-┌─────────────────────────────────────────────────────┐
-│              NEXT.JS (TypeScript)                   │
-│         Frontend + API Orchestrator                 │
-└──────────────────┬──────────────────────────────────┘
-                   │ HTTP
-       ┌───────────┼──────────────┐
-       ▼           ▼              ▼
-┌──────────┐ ┌──────────┐ ┌────────────┐
-│  RUST    │ │  RUST    │ │   RUST     │
-│ Service  │ │ Service  │ │  Service   │
-│    1     │ │    2     │ │     3      │
-│ Document │ │ Journal  │ │ AI Cache   │
-│  Parser  │ │ Scraper  │ │ + Vector   │
-└──────────┘ └──────────┘ └────────────┘
-       │           │              │
-       └───────────┼──────────────┘
-                   ▼
-┌─────────────────────────────────────────────────────┐
-│              SUPABASE                               │
-│         PostgreSQL + pgvector + Auth                │
-└─────────────────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────┐
-│              OLLAMA                                 │
-│           Qwen 2.5 14B (GPU)                        │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## Struktur Project
-
-```
+```text
 eduresearch-igm/
 ├── apps/
-│   ├── web/                    # Next.js app
-│   │   ├── app/
-│   │   │   ├── (auth)/
-│   │   │   │   ├── login/
-│   │   │   │   └── register/
-│   │   │   ├── dashboard/
-│   │   │   │   ├── proposal/
-│   │   │   │   ├── skripsi/
-│   │   │   │   ├── jurnal/
-│   │   │   │   └── references/
-│   │   │   └── api/
-│   │   │       ├── chat/
-│   │   │       └── references/
-│   │   └── lib/
-│   │       ├── supabase.ts
-│   │       ├── supabase.server.ts
-│   │       ├── ollama.ts
-│   │       ├── openalex.ts
-│   │       └── prompts.ts
-│   │
-│   └── mobile/                 # React Native app
-│
+│   └── web/
+│       ├── app/
+│       │   ├── (auth)/
+│       │   ├── api/
+│       │   └── dashboard/
+│       ├── components/
+│       ├── lib/
+│       ├── public/
+│       ├── .env.example
+│       └── package.json
 ├── services/
-│   ├── doc-parser/             # Rust: Document Intelligence
-│   ├── journal-scraper/        # Rust: Journal Scraper
-│   └── ai-cache/               # Rust: Vector Cache
-│
-├── packages/
-│   └── types/                  # Shared TypeScript types
-│
-├── docker-compose.yml
+│   ├── doc-parser/
+│   └── journal-scraper/
+├── supabase/
+│   └── migrations/
+├── QA_CHECKLIST.md
+├── package.json
 └── turbo.json
 ```
 
----
+## Prasyarat
 
-## Memulai
+- Node.js 20+ direkomendasikan
+- npm 11 sesuai `packageManager`
+- Supabase project
+- Rust toolchain untuk menjalankan service lokal
+- Ollama untuk AI lokal, atau `ANTHROPIC_API_KEY` untuk fallback AI
 
-### Prasyarat
+## Setup Lokal
 
-- Node.js 18+
-- npm 10+
-- Rust 1.75+ (untuk services)
-- Docker + Docker Compose
-- GPU NVIDIA (opsional, untuk Ollama)
+### 1. Clone repo
 
-### Instalasi
-
-**1. Clone repository**
 ```bash
-git clone https://github.com/username/eduresearch-igm.git
+git clone https://github.com/zakialhakim16/eduresearch-igm.git
 cd eduresearch-igm
 ```
 
-**2. Install dependencies**
+### 2. Install dependency
+
 ```bash
 npm install
 ```
 
-**3. Setup environment variables**
+### 3. Siapkan environment web
+
 ```bash
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-Isi variabel berikut di `apps/web/.env.local`:
+Isi nilai Supabase dan service URL sesuai environment lokalmu. Jangan commit `.env.local`.
+
+Variabel utama:
+
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxxx
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
+DOC_PARSER_URL=http://localhost:8001
+JOURNAL_SCRAPER_URL=http://localhost:8002
 ```
 
-**4. Setup Supabase**
+Untuk production tanpa Ollama lokal, set:
 
-Jalankan SQL berikut di Supabase SQL Editor:
-```sql
--- Enable pgvector
-create extension if not exists vector;
-
--- Jalankan semua migration di /supabase/migrations
+```env
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-**5. Install & jalankan Ollama**
+### 4. Jalankan migrasi Supabase
+
+Jalankan file SQL di folder `supabase/migrations` pada Supabase SQL Editor atau melalui workflow migrasi Supabase:
+
+```text
+supabase/migrations/001_initial.sql
+supabase/migrations/002_start_document_session_rpc.sql
+```
+
+Pastikan bucket Storage bernama `documents` sudah dibuat di Supabase.
+
+### 5. Jalankan Ollama lokal
+
 ```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Download model
-ollama pull qwen2.5:14b
-
-# Jalankan
+ollama pull qwen2.5:7b
 ollama serve
 ```
 
-**6. Jalankan development server**
-```bash
-npm run dev
-```
+### 6. Jalankan service Rust lokal
 
-Buka [http://localhost:3000](http://localhost:3000)
-
-### Dengan Docker
+`doc-parser`:
 
 ```bash
-# Jalankan semua service
-docker-compose up -d
-
-# Lihat logs
-docker-compose logs -f
+cd services/doc-parser
+PORT=8001 cargo run
 ```
 
----
-
-## Penggunaan
-
-### Register
-1. Buka `/register`
-2. Masukkan NPM (format: `2023110105`)
-3. Email otomatis: `npm@student.uigm.ac.id`
-4. Pilih jenjang, fakultas, dan prodi
-5. Klik Daftar
-
-### Mulai Bimbingan Proposal
-1. Login dengan NPM & password
-2. Pilih modul **Proposal** di dashboard
-3. Upload draft yang ada, atau mulai dari nol
-4. Ikuti panduan Socratic step-by-step
-5. Progress tersimpan otomatis di Journey Log
-
-### Cari Referensi
-1. Buka menu **Cari Referensi**
-2. Ketik topik penelitian
-3. Filter berdasarkan tahun & open access
-4. Simpan referensi ke library pribadi
-
----
-
-## Deploy produksi (Railway + Vercel)
-
-### 1. doc-parser (Rust) — **Railway** (disarankan)
-
-Fly.io sering meminta **saldo / kartu** di awal; untuk doc-parser lebih mudah lewat **Railway** (trial/kredit sesuai kebijakan terbaru [Railway](https://railway.app/pricing)).
-
-1. Daftar / login di [railway.app](https://railway.app).
-2. **New project** → **Deploy from GitHub repo** → pilih `jaki16/eduresearch-igm`.
-3. Buka service yang baru → **Settings**:
-   - **Root Directory** / source path: **`services/doc-parser`** (wajib — `Dockerfile` ada di situ).
-   - Biarkan build memakai **Dockerfile** (ada [`railway.json`](services/doc-parser/railway.json) yang memaksa builder `DOCKERFILE` + healthcheck `/health`).
-4. **Settings → Networking** → **Generate domain** (HTTPS).
-5. Salin URL publik (mis. `https://eduresearch-igm-production-xxxx.up.railway.app`) → set sebagai **`DOC_PARSER_URL`** di Vercel (tanpa slash di akhir).
-
-**Port:** Railway meng-inject env **`PORT`**. Service sudah membaca `PORT` + `HOST` di [`main.rs`](services/doc-parser/src/main.rs); tidak perlu set manual kecuali debugging.
-
-#### Setup dari terminal (CLI)
-
-Dokumentasi resmi: [Railway CLI](https://docs.railway.com/guides/cli).
-
-1. **Pasang CLI** (sekali per mesin):
-
-   ```bash
-   bash <(curl -fsSL https://railway.com/install.sh)
-   source "$HOME/.railway/env"   # atau buka terminal baru (PATH ditambah di ~/.bashrc)
-   railway --version
-   ```
-
-2. **Login** (buka browser):
-
-   ```bash
-   railway login
-   ```
-
-   Di SSH / tanpa browser: `railway login --browserless` (butuh TTY interaktif). Untuk CI, pakai env **`RAILWAY_TOKEN`** / **`RAILWAY_API_TOKEN`** — lihat [Tokens](https://docs.railway.com/integrations/api#project-token).
-
-3. **Hubungkan folder `services/doc-parser` ke Railway:**
-
-   ```bash
-   cd services/doc-parser
-   ```
-
-   - **Proyek baru:** `railway init --name eduresearch-doc-parser` (membuat project + link folder ini).
-   - **Proyek sudah ada (mis. dibuat dari dashboard):** `railway link` lalu pilih workspace + project + service doc-parser.
-
-4. **Deploy dari mesin lokal** (upload konteks folder ini, build Dockerfile):
-
-   ```bash
-   railway up --detach
-   ```
-
-5. **Domain publik (HTTPS)** — generate lalu salin URL ke Vercel sebagai `DOC_PARSER_URL`:
-
-   ```bash
-   railway domain
-   ```
-
-6. **Cek status / log:**
-
-   ```bash
-   railway status
-   railway logs
-   ```
-
-**Alternatif:** tetap deploy dari **GitHub** di dashboard Railway (root directory `services/doc-parser`); CLI hanya untuk `link`, `logs`, `domain`, dan redeploy tanpa push.
-
-#### Fly.io (opsional)
-
-Jika nanti pakai Fly lagi: [`services/doc-parser/fly.toml`](services/doc-parser/fly.toml) + `fly deploy` dari folder itu. Siapkan billing Fly sesuai kebijakan mereka.
-
-### 1b. journal-scraper (Rust) — **opsional**
-
-Service kedua untuk **metadata DOI** lewat [Crossref REST API](https://api.crossref.org/documentation/rest-api). Next.js saat ini belum memanggilnya; siap untuk integrasi berikutnya (mis. validasi DOI di library).
-
-- Kode: [`services/journal-scraper`](services/journal-scraper) — endpoint `GET /health`, `GET /metadata?doi=...` (default lokal **port 8002**).
-- **Next.js:** set **`JOURNAL_SCRAPER_URL`** agar route [`GET /api/journals/metadata`](apps/web/app/api/journals/metadata/route.ts) (`?doi=...`) mem-proxy ke service ini (wajib login).
-- **Crossref polite pool:** set env **`CROSSREF_MAILTO`** (email kontak) di produksi; User-Agent memakainya otomatis.
-- **Railway:** sama seperti doc-parser — root directory **`services/journal-scraper`**, [`railway.json`](services/journal-scraper/railway.json), Dockerfile multi-stage.
+`journal-scraper`:
 
 ```bash
 cd services/journal-scraper
 PORT=8002 cargo run
-# curl "http://127.0.0.1:8002/metadata?doi=10.1037/0003-066x.59.8.847"
 ```
 
-### 2. Next.js — Vercel
+### 7. Jalankan web app
 
-1. Import repo di [Vercel](https://vercel.com), set **Root Directory** ke `apps/web` (penting untuk npm workspaces).
-2. **Environment variables** (Production + Preview):
+Dari root monorepo:
 
-| Variable | Keterangan |
-|----------|------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | URL project Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase |
-| `ANTHROPIC_API_KEY` | Fallback AI di serverless (tanpa Ollama) |
-| `DOC_PARSER_URL` | URL HTTPS Railway doc-parser (bukan `localhost`) |
-| `JOURNAL_SCRAPER_URL` | Opsional — URL service journal-scraper untuk `/api/journals/metadata` |
-| `OLLAMA_URL` | Opsional; di Vercel biasanya dikosongkan |
+```bash
+npm run dev --workspace=web
+```
 
-3. Deploy; uji login, upload dokumen, analisis (memanggil doc-parser), chat.
+Atau dari folder `apps/web`:
 
-### 3. Checklist singkat
+```bash
+cd apps/web
+npm run dev
+```
 
-- [ ] Migrasi `supabase/migrations/001_initial.sql` sudah dijalankan di Supabase
-- [ ] Bucket Storage `documents` ada di Supabase
-- [ ] `DOC_PARSER_URL` mengarah ke URL **HTTPS** service doc-parser (Railway)
-- [ ] `ANTHROPIC_API_KEY` terisi di Vercel bila tidak pakai Ollama di server
+Web app berjalan di:
 
----
+```text
+http://localhost:3001
+```
+
+## Script
+
+Root monorepo:
+
+```bash
+npm run dev
+npm run build
+npm run lint
+```
+
+Workspace web:
+
+```bash
+npm run dev --workspace=web
+npm run build --workspace=web
+npm run lint --workspace=web
+```
+
+## Alur Penggunaan
+
+1. Buka `/register` untuk membuat akun mahasiswa.
+2. Login melalui `/login`.
+3. Gunakan dashboard untuk upload dokumen atau mulai bimbingan proposal.
+4. Analisis dokumen melalui menu Dokumen Saya.
+5. Ekstrak keyword dan cari referensi akademik.
+6. Simpan referensi ke library dokumen.
+7. Lanjutkan diskusi di sesi bimbingan berbasis dokumen.
+
+## Deployment
+
+### Web App di Vercel
+
+1. Import repo ke Vercel.
+2. Set Root Directory ke `apps/web`.
+3. Isi environment variables production:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `ANTHROPIC_API_KEY`
+   - `DOC_PARSER_URL`
+   - `JOURNAL_SCRAPER_URL`
+4. Deploy.
+
+### doc-parser di Railway
+
+1. Deploy dari folder `services/doc-parser`.
+2. Gunakan Dockerfile service tersebut.
+3. Generate HTTPS domain.
+4. Pakai domain Railway sebagai `DOC_PARSER_URL` di Vercel.
+
+### journal-scraper di Railway
+
+1. Deploy dari folder `services/journal-scraper`.
+2. Generate HTTPS domain.
+3. Pakai domain Railway sebagai `JOURNAL_SCRAPER_URL` di Vercel.
+4. Set `CROSSREF_MAILTO` di environment service untuk polite pool Crossref.
 
 ## Roadmap
 
-```
-FASE 0 ✅  Monorepo + Docker + Database Schema
-FASE 1 ✅  Auth UIGM + Onboarding + Dashboard
-FASE 2 ✅  Socratic AI Engine (Ollama + Qwen)
-FASE 3 ✅  Reference Engine (OpenAlex)
-FASE 4 ✅  Rust Service 1: Document Parser
-FASE 5 🔄  Rust Service 2: Journal Scraper (Crossref + proxy `/api/journals/metadata`)
-FASE 6 ⏳  Rust Service 3: Vector Cache
-FASE 7 ⏳  React Native Mobile App
-FASE 8 ⏳  Production Deployment
-```
-
----
+- Memperkuat parsing dan klasifikasi struktur dokumen
+- Menambah analisis kualitas referensi
+- Menambah export laporan bimbingan
+- Menyiapkan mobile app setelah web MVP stabil
+- Menambahkan shared package jika kontrak tipe lintas app mulai stabil
 
 ## Kontribusi
 
-Project ini saat ini dalam tahap pengembangan aktif oleh solo developer. Kontribusi akan dibuka setelah MVP selesai.
+Project ini masih dikembangkan sebagai proyek utama pribadi. Issue dan saran tetap terbuka melalui GitHub:
 
-Untuk saran, bug report, atau diskusi — buka [Issue](https://github.com/username/eduresearch-igm/issues).
-
----
-
-## Lisensi
-
-[MIT License](LICENSE) — bebas digunakan untuk kepentingan pendidikan.
-
----
+```text
+https://github.com/zakialhakim16/eduresearch-igm/issues
+```
 
 ## Developer
 
-**Muhammad Zaki Al Hakim**
-System Architect & Full-Stack Developer
-Universitas Indo Global Mandiri — Teknik Informatika
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077b5?style=flat-square&logo=linkedin)](https://linkedin.com/in/username)
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-black?style=flat-square&logo=github)](https://github.com/username)
-
----
-
-<div align="center">
-
-Dibuat dengan ❤️ untuk ekosistem riset UIGM Palembang
-
-*"Bukan sekadar tools — ini ekosistem riset yang membangun kompetensi mahasiswa."*
-
-</div>
+Muhammad Zaki Al Hakim
+Universitas Indo Global Mandiri, Teknik Informatika

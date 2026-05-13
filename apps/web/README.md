@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduResearch AI Web App
 
-## Getting Started
+Aplikasi web utama untuk platform EduResearch AI. Folder ini berisi antarmuka pengguna, route API Next.js, integrasi Supabase, dan orkestrasi layanan pendukung seperti `doc-parser`, `journal-scraper`, OpenAlex, Ollama, dan provider AI fallback.
 
-First, run the development server:
+## Gambaran Singkat
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Web app ini menangani alur utama pengguna:
+
+- autentikasi mahasiswa
+- dashboard riset
+- manajemen dokumen penelitian
+- pencarian dan penyimpanan referensi
+- sesi bimbingan berbasis AI
+- integrasi metadata jurnal
+- parsing dan analisis dokumen
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Supabase SSR dan Supabase Auth
+- Vercel AI SDK
+- Zustand
+- Zod
+
+## Struktur Folder Penting
+
+```text
+apps/web/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/
+│   │   └── register/
+│   ├── api/
+│   │   ├── auth/logout/
+│   │   ├── chat/
+│   │   ├── documents/
+│   │   ├── journals/metadata/
+│   │   ├── references/
+│   │   └── sessions/
+│   └── dashboard/
+│       ├── documents/
+│       ├── proposal/
+│       ├── references/
+│       └── settings/
+├── components/
+├── lib/
+├── public/
+├── .env.example
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Menjalankan Secara Lokal
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Dari root monorepo:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev --workspace=web
+```
 
-## Learn More
+Atau dari folder ini:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Secara default aplikasi berjalan di:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+http://localhost:3001
+```
 
-## Deploy on Vercel
+## Environment Variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Salin file environment:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+cp .env.example .env.local
+```
+
+Variabel yang digunakan web app:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
+DOC_PARSER_URL=http://localhost:8001
+JOURNAL_SCRAPER_URL=http://localhost:8002
+```
+
+Opsional untuk production/serverless:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Dependensi Eksternal
+
+- Supabase untuk auth, database, dan storage
+- `doc-parser` untuk analisis dokumen
+- `journal-scraper` untuk metadata DOI
+- Ollama untuk model AI lokal
+- Anthropic API sebagai fallback AI production
+- OpenAlex untuk pencarian paper
+
+## Route Penting
+
+- `/login` dan `/register` untuk auth
+- `/dashboard` untuk home workspace
+- `/dashboard/documents` untuk upload dan analisis dokumen
+- `/dashboard/proposal` untuk sesi bimbingan
+- `/dashboard/references` untuk pencarian referensi
+- `/api/chat` untuk streaming respons AI
+- `/api/documents/*` untuk analisis dokumen dan referensi
+- `/api/journals/metadata` untuk proxy metadata DOI
+- `/api/sessions/*` untuk manajemen sesi
+
+## Deployment
+
+Untuk deploy ke Vercel:
+
+1. Set Root Directory ke `apps/web`.
+2. Isi seluruh environment variables production.
+3. Pastikan migrasi Supabase sudah dijalankan.
+4. Pastikan `DOC_PARSER_URL` dan `JOURNAL_SCRAPER_URL` memakai URL HTTPS jika dipakai di production.
+
+## Catatan
+
+- Route `/` mengarahkan pengguna ke `/login`.
+- Middleware melindungi area `/dashboard`.
+- Script `dev` memakai port `3001`.
+- Route `/api/documents/analyze` memerlukan `DOC_PARSER_URL`.
+- Route `/api/journals/metadata` memerlukan `JOURNAL_SCRAPER_URL`.
