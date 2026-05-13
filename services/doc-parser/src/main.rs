@@ -84,7 +84,7 @@ async fn parse_document(payload: web::Json<ParseRequest>) -> impl Responder {
     println!("storage_path: {}", payload.storage_path);
     println!("mime_type: {}", payload.mime_type);
 
-    let detected_type = detect_document_type(&payload.file_name);
+    let detected_type = detect_document_type(&payload.file_name, None);
 
     HttpResponse::Ok().json(ParseResponse {
         document_id: payload.document_id.clone(),
@@ -179,7 +179,7 @@ async fn parse_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
 
     let _ = std::fs::remove_file(&path);
 
-    let detected_type = detect_document_type(&file_name);
+    let detected_type = detect_document_type(&file_name, Some(&extracted_text));
     let word_count = count_words(&extracted_text);
     let chapters = detect_chapters_with_content(&extracted_text);
     let text_preview = make_preview(&extracted_text, 700);
@@ -202,25 +202,99 @@ async fn parse_file(mut payload: Multipart) -> Result<HttpResponse, Error> {
     }))
 }
 
-fn detect_document_type(file_name: &str) -> String {
+fn detect_document_type_from_filename(file_name: &str) -> String {
     let lower_name = file_name.to_lowercase();
 
-    if lower_name.contains("proposal") {
+    if lower_name.contains("proposal") || lower_name.contains("usulan") {
         return "proposal".to_string();
     }
 
-    if lower_name.contains("skripsi") {
+    if lower_name.contains("skripsi")
+        || lower_name.contains("tugas-akhir")
+        || lower_name.contains("tugasakhir")
+        || lower_name.contains("-ta-")
+        || lower_name.contains("_ta_")
+        || lower_name.contains("thesis")
+        || lower_name.contains("tesis")
+    {
         return "skripsi".to_string();
     }
 
-    if lower_name.contains("jurnal") {
+    if lower_name.contains("jurnal")
+        || lower_name.contains("artikel")
+        || lower_name.contains("journal")
+        || lower_name.contains("paper")
+    {
         return "jurnal".to_string();
     }
 
-    if lower_name.contains("kp") || lower_name.contains("pkl") {
+    if lower_name.contains("pkl")
+        || lower_name.contains("laporan_kp")
+        || lower_name.contains("kerja-praktik")
+        || lower_name.contains("kerjapraktik")
+        || lower_name.contains("kerja praktik")
+        || lower_name.contains("kerja_praktik")
+        || (lower_name.contains("kp") && lower_name.contains("laporan"))
+    {
         return "laporan_kp".to_string();
     }
 
+    if lower_name.contains("template") {
+        return "template".to_string();
+    }
+
+    "unknown".to_string()
+}
+
+/// Heuristik dari awal teks (setelah nama file tidak cukup).
+fn detect_document_type_from_content(content: &str) -> Option<String> {
+    let head: String = content.chars().take(8000).collect();
+    let u = head.to_uppercase();
+
+    if u.contains("LAPORAN KERJA PRAKTEK")
+        || u.contains("LAPORAN PRAKTEK KERJA")
+        || u.contains("LAPORAN KERJA PRAKTIK")
+        || u.contains("LAPORAN PKL")
+        || (u.contains("KERJA PRAKTEK") && u.contains("LAPORAN"))
+    {
+        return Some("laporan_kp".to_string());
+    }
+
+    if u.contains("PROPOSAL PENELITIAN")
+        || u.contains("PROPOSAL TESIS")
+        || u.contains("PROPOSAL SKRIPSI")
+    {
+        return Some("proposal".to_string());
+    }
+
+    if u.contains("\nSKRIPSI\n")
+        || u.contains("\r\nSKRIPSI\r\n")
+        || u.starts_with("SKRIPSI\n")
+        || u.starts_with("SKRIPSI\r\n")
+    {
+        return Some("skripsi".to_string());
+    }
+
+    if u.contains("ARTIKEL ILMIAH")
+        || (u.contains("ABSTRACT") && u.contains("KEYWORDS"))
+        || (u.contains("ABSTRAK") && u.contains("KATA KUNCI"))
+    {
+        return Some("jurnal".to_string());
+    }
+
+    None
+}
+
+fn detect_document_type(file_name: &str, content: Option<&str>) -> String {
+    let from_name = detect_document_type_from_filename(file_name);
+    if from_name != "unknown" {
+        return from_name;
+    }
+    if let Some(text) = content {
+        if let Some(from_content) = detect_document_type_from_content(text) {
+            return from_content;
+        }
+    }
     "unknown".to_string()
 }
 

@@ -52,7 +52,7 @@ export async function callAI(
     )
   }
   throw new Error(
-    'Tidak ada AI provider. Set OLLAMA_URL atau ANTHROPIC_API_KEY di .env.local'
+    'Tidak ada AI provider. Set OLLAMA_URL (dan jalankan Ollama) atau ANTHROPIC_API_KEY untuk lingkungan ini.'
   )
 }
 
@@ -67,7 +67,7 @@ export async function streamAI(
   if (ANTHROPIC_API_KEY) return streamClaude(messages, systemPrompt)
 
   throw new Error(
-    'Tidak ada AI provider. Set OLLAMA_URL atau ANTHROPIC_API_KEY di .env.local'
+    'Tidak ada AI provider. Set OLLAMA_URL (dan jalankan Ollama) atau ANTHROPIC_API_KEY untuk lingkungan ini.'
   )
 }
 

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Spinner } from '@/components/ui/spinner'
+import { formatAiClientError } from '@/lib/format-ai-client-error'
 import { createClient } from '@/lib/supabase'
 
 type ChatMessage = {
@@ -209,7 +211,9 @@ export default function ProposalPage() {
         const sessionResult = await sessionResponse.json()
 
         if (!sessionResponse.ok) {
-          throw new Error(sessionResult.error ?? 'Gagal membuat sesi baru')
+          throw new Error(
+            formatAiClientError(sessionResult.error ?? 'Gagal membuat sesi baru')
+          )
         }
 
         sessionIdForRequest = sessionResult.session_id as string
@@ -234,8 +238,22 @@ export default function ProposalPage() {
         }),
       })
 
-      if (!response.ok || !response.body) {
-        throw new Error('Gagal menghubungi AI')
+      if (!response.ok) {
+        let message = 'Gagal menghubungi AI'
+        const contentType = response.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          try {
+            const body = (await response.json()) as { error?: string }
+            if (body?.error) message = formatAiClientError(body.error)
+          } catch {
+            /* abaikan */
+          }
+        }
+        throw new Error(message)
+      }
+
+      if (!response.body) {
+        throw new Error('Respons AI kosong')
       }
 
       const reader = response.body.getReader()
@@ -285,9 +303,11 @@ export default function ProposalPage() {
     } catch (error) {
       console.error(error)
       setError(
-        error instanceof Error
-          ? error.message
-          : 'Gagal mendapatkan respons AI. Coba lagi.'
+        formatAiClientError(
+          error instanceof Error
+            ? error.message
+            : 'Gagal mendapatkan respons AI. Coba lagi.'
+        )
       )
 
       setMessages((prev) => {
@@ -436,13 +456,16 @@ export default function ProposalPage() {
             <button
               type="submit"
               disabled={!input.trim() || isStreaming}
-              className="absolute bottom-2 right-2 rounded-xl bg-gradient-to-br from-primary to-primary/90 px-3 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-opacity hover:opacity-95 disabled:opacity-40 md:px-5"
+              className="absolute bottom-2 right-2 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-primary to-primary/90 px-3 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-opacity hover:opacity-95 disabled:opacity-40 md:px-5"
             >
               {isStreaming ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary-foreground" />
-                  ...
-                </span>
+                <>
+                  <Spinner
+                    className="text-primary-foreground"
+                    aria-label="Mengirim"
+                  />
+                  <span>Mengirim</span>
+                </>
               ) : (
                 'Kirim'
               )}

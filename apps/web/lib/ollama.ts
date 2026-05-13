@@ -1,3 +1,5 @@
+import { OLLAMA_MODEL } from './ai'
+
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434'
 
 export interface OllamaMessage {
@@ -7,7 +9,7 @@ export interface OllamaMessage {
 
 export async function chatWithOllama(
   messages: OllamaMessage[],
-  model: string = 'qwen2.5:7b'
+  model: string = OLLAMA_MODEL
 ): Promise<string> {
   const response = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
@@ -29,7 +31,7 @@ export async function chatWithOllama(
 
 export async function streamWithOllama(
   messages: OllamaMessage[],
-  model: string = 'qwen2.5:7b'
+  model: string = OLLAMA_MODEL
 ): Promise<ReadableStream> {
   const response = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',

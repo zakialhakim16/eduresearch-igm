@@ -3,6 +3,8 @@
 import { CheckCircle2, Circle, FolderOpen } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Spinner } from '@/components/ui/spinner'
+import { formatAiClientError } from '@/lib/format-ai-client-error'
 import { createClient } from '@/lib/supabase'
 
 type RecommendedReference = {
@@ -344,7 +346,9 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal menganalisis dokumen')
+      setError(
+        formatAiClientError(result.error ?? 'Gagal menganalisis dokumen')
+      )
       setAnalyzingId(null)
       return
     }
@@ -379,7 +383,9 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal membuat ringkasan AI')
+      setError(
+        formatAiClientError(result.error ?? 'Gagal membuat ringkasan AI')
+      )
       setSummarizingId(null)
       return
     }
@@ -409,7 +415,9 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal memulai sesi bimbingan')
+      setError(
+        formatAiClientError(result.error ?? 'Gagal memulai sesi bimbingan')
+      )
       setStartingSessionId(null)
       return
     }
@@ -440,7 +448,9 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal mengekstrak keyword riset')
+      setError(
+        formatAiClientError(result.error ?? 'Gagal mengekstrak keyword riset')
+      )
       setExtractingKeywordsId(null)
       return
     }
@@ -470,7 +480,7 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal mencari referensi')
+      setError(formatAiClientError(result.error ?? 'Gagal mencari referensi'))
       setFindingReferencesId(null)
       return
     }
@@ -520,7 +530,7 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal menyimpan referensi')
+      setError(formatAiClientError(result.error ?? 'Gagal menyimpan referensi'))
       setSavingReferenceId(null)
       return
     }
@@ -550,7 +560,9 @@ export default function DocumentsPage() {
     const result = await response.json()
 
     if (!response.ok) {
-      setError(result.error ?? 'Gagal menganalisis gap referensi')
+      setError(
+        formatAiClientError(result.error ?? 'Gagal menganalisis gap referensi')
+      )
       setAnalyzingReferenceGapId(null)
       return
     }
@@ -633,8 +645,27 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full min-w-0 items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Memuat dokumen...</p>
+      <div className="min-h-full min-w-0 bg-background px-4 py-10 md:px-6">
+        <div className="mx-auto max-w-5xl space-y-6 animate-pulse">
+          <div className="h-8 w-48 rounded-lg bg-muted md:h-9" />
+          <div className="h-4 max-w-xl rounded bg-muted" />
+          <div className="rounded-2xl border bg-muted/30 p-6 space-y-4">
+            <div className="h-5 w-40 rounded bg-muted" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="h-10 rounded-lg bg-muted" />
+              <div className="h-10 rounded-lg bg-muted" />
+            </div>
+            <div className="h-10 w-32 rounded-lg bg-muted" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-5 w-36 rounded bg-muted" />
+            <div className="h-28 rounded-2xl border bg-muted/40" />
+            <div className="h-28 rounded-2xl border bg-muted/40" />
+          </div>
+        </div>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Memuat dokumen...
+        </p>
       </div>
     )
   }
@@ -721,9 +752,16 @@ export default function DocumentsPage() {
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="w-full md:w-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 md:w-auto"
           >
-            {uploading ? 'Mengupload...' : 'Upload Dokumen'}
+            {uploading ? (
+              <>
+                <Spinner aria-label="Mengupload" />
+                Mengupload...
+              </>
+            ) : (
+              'Upload Dokumen'
+            )}
           </button>
         </section>
 
@@ -803,9 +841,16 @@ export default function DocumentsPage() {
                           doc.status !== 'parsed' ||
                           !doc.ai_summary
                         }
-                        className="w-full sm:w-auto text-sm px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50 sm:w-auto"
                       >
-                        {startingSessionId === doc.id ? 'Memulai...' : 'Mulai Bimbingan'}
+                        {startingSessionId === doc.id ? (
+                          <>
+                            <Spinner aria-label="Memulai" />
+                            Memulai...
+                          </>
+                        ) : (
+                          'Mulai Bimbingan'
+                        )}
                       </button>
 
                       <button
@@ -897,22 +942,58 @@ export default function DocumentsPage() {
 
                       {getActiveDocumentTab(doc.id) === 'summary' && (
                         <div className="space-y-4">
-                          <div className="rounded-xl border bg-background p-4 space-y-3">
+                          {analyzingId === doc.id && (
+                            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                              <Spinner
+                                className="text-primary"
+                                aria-label="Memproses"
+                              />
+                              <span>Memproses dokumen lewat parser…</span>
+                            </div>
+                          )}
+
+                          {summarizingId === doc.id && (
+                            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+                              <Spinner
+                                className="text-primary"
+                                aria-label="Meringkas"
+                              />
+                              <span>Membuat ringkasan AI…</span>
+                            </div>
+                          )}
+
+                          <div className="space-y-3 rounded-xl border bg-background p-4">
                             <p className="text-sm font-medium">Aksi Dokumen</p>
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => handleAnalyze(doc.id)}
                                 disabled={analyzingId === doc.id}
-                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                               >
-                                {analyzingId === doc.id ? 'Membaca...' : 'Baca Dokumen'}
+                                {analyzingId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Membaca dokumen" />
+                                    Membaca...
+                                  </>
+                                ) : (
+                                  'Baca Dokumen'
+                                )}
                               </button>
                               <button
                                 onClick={() => handleSummarize(doc.id)}
-                                disabled={summarizingId === doc.id || doc.status !== 'parsed'}
-                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                disabled={
+                                  summarizingId === doc.id || doc.status !== 'parsed'
+                                }
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                               >
-                                {summarizingId === doc.id ? 'Meringkas...' : 'Buat Ringkasan'}
+                                {summarizingId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Meringkas" />
+                                    Meringkas...
+                                  </>
+                                ) : (
+                                  'Buat Ringkasan'
+                                )}
                               </button>
                             </div>
                           </div>
@@ -1103,19 +1184,31 @@ export default function DocumentsPage() {
                                   doc.status !== 'parsed' ||
                                   !doc.ai_summary
                                 }
-                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                               >
-                                {extractingKeywordsId === doc.id
-                                  ? 'Mengambil...'
-                                  : 'Ambil Keyword'}
+                                {extractingKeywordsId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Mengambil keyword" />
+                                    Mengambil...
+                                  </>
+                                ) : (
+                                  'Ambil Keyword'
+                                )}
                               </button>
 
                               <button
                                 onClick={() => handleFindReferences(doc.id)}
                                 disabled={findingReferencesId === doc.id || !doc.research_query}
-                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                               >
-                                {findingReferencesId === doc.id ? 'Mencari...' : 'Cari Paper'}
+                                {findingReferencesId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Mencari paper" />
+                                    Mencari...
+                                  </>
+                                ) : (
+                                  'Cari Paper'
+                                )}
                               </button>
 
                               <button
@@ -1124,11 +1217,16 @@ export default function DocumentsPage() {
                                   analyzingReferenceGapId === doc.id ||
                                   doc.status !== 'parsed'
                                 }
-                                className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                               >
-                                {analyzingReferenceGapId === doc.id
-                                  ? 'Mengecek...'
-                                  : 'Cek Kekuatan Referensi'}
+                                {analyzingReferenceGapId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Menganalisis gap" />
+                                    Mengecek...
+                                  </>
+                                ) : (
+                                  'Cek Kekuatan Referensi'
+                                )}
                               </button>
                             </div>
                           </div>
@@ -1194,11 +1292,16 @@ export default function DocumentsPage() {
                                           disabled={
                                             savingReferenceId === `${doc.id}-${ref.openalex_id}`
                                           }
-                                          className="text-sm px-3 py-2 border rounded-lg hover:bg-muted disabled:opacity-50"
+                                          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
                                         >
-                                          {savingReferenceId === `${doc.id}-${ref.openalex_id}`
-                                            ? 'Menyimpan...'
-                                            : 'Simpan Referensi'}
+                                          {savingReferenceId === `${doc.id}-${ref.openalex_id}` ? (
+                                            <>
+                                              <Spinner aria-label="Menyimpan" />
+                                              Menyimpan...
+                                            </>
+                                          ) : (
+                                            'Simpan Referensi'
+                                          )}
                                         </button>
                                       </div>
                                     </div>
@@ -1267,7 +1370,7 @@ export default function DocumentsPage() {
 
                       {getActiveDocumentTab(doc.id) === 'gap' && (
                         <div className="space-y-4">
-                          <div className="rounded-xl border bg-background p-4 space-y-3">
+                          <div className="space-y-3 rounded-xl border bg-background p-4">
                             <div>
                               <p className="text-sm font-medium">Kekuatan referensi</p>
                               <p className="text-xs text-muted-foreground">
@@ -1275,15 +1378,24 @@ export default function DocumentsPage() {
                               </p>
                             </div>
 
+                            {analyzingReferenceGapId === doc.id && (
+                              <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-muted-foreground">
+                                <Spinner className="text-primary" aria-label="Menganalisis" />
+                                <span>Menganalisis gap referensi…</span>
+                              </div>
+                            )}
+
                             {doc.reference_gap_analysis ? (
                               <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                                 {doc.reference_gap_analysis}
                               </div>
                             ) : (
-                              <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
-                                Belum ada analisis kekuatan referensi. Buka tab Referensi lalu klik
-                                Cek Kekuatan Referensi.
-                              </div>
+                              analyzingReferenceGapId !== doc.id && (
+                                <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">
+                                  Belum ada analisis kekuatan referensi. Buka tab Referensi lalu
+                                  klik Cek Kekuatan Referensi.
+                                </div>
+                              )
                             )}
                           </div>
                         </div>
