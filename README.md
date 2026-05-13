@@ -84,7 +84,7 @@ Platform ini menggunakan pendekatan **Socratic Learning** — AI tidak menulis k
 | Service | Teknologi | Fungsi |
 |---|---|---|
 | doc-parser | Actix-web + lopdf | Document intelligence |
-| journal-scraper | Tokio + reqwest | Journal scraping engine |
+| journal-scraper | Actix-web + reqwest | Metadata DOI (Crossref) |
 | ai-cache | Tonic + candle | Vector search & caching |
 
 ### Infrastructure
@@ -344,6 +344,20 @@ Dokumentasi resmi: [Railway CLI](https://docs.railway.com/guides/cli).
 
 Jika nanti pakai Fly lagi: [`services/doc-parser/fly.toml`](services/doc-parser/fly.toml) + `fly deploy` dari folder itu. Siapkan billing Fly sesuai kebijakan mereka.
 
+### 1b. journal-scraper (Rust) — **opsional**
+
+Service kedua untuk **metadata DOI** lewat [Crossref REST API](https://api.crossref.org/documentation/rest-api). Next.js saat ini belum memanggilnya; siap untuk integrasi berikutnya (mis. validasi DOI di library).
+
+- Kode: [`services/journal-scraper`](services/journal-scraper) — endpoint `GET /health`, `GET /metadata?doi=...` (default lokal **port 8002**).
+- **Crossref polite pool:** set env **`CROSSREF_MAILTO`** (email kontak) di produksi; User-Agent memakainya otomatis.
+- **Railway:** sama seperti doc-parser — root directory **`services/journal-scraper`**, [`railway.json`](services/journal-scraper/railway.json), Dockerfile multi-stage.
+
+```bash
+cd services/journal-scraper
+PORT=8002 cargo run
+# curl "http://127.0.0.1:8002/metadata?doi=10.1037/0003-066x.59.8.847"
+```
+
 ### 2. Next.js — Vercel
 
 1. Import repo di [Vercel](https://vercel.com), set **Root Directory** ke `apps/web` (penting untuk npm workspaces).
@@ -375,8 +389,8 @@ FASE 0 ✅  Monorepo + Docker + Database Schema
 FASE 1 ✅  Auth UIGM + Onboarding + Dashboard
 FASE 2 ✅  Socratic AI Engine (Ollama + Qwen)
 FASE 3 ✅  Reference Engine (OpenAlex)
-FASE 4 🔄  Rust Service 1: Document Parser
-FASE 5 ⏳  Rust Service 2: Journal Scraper
+FASE 4 ✅  Rust Service 1: Document Parser
+FASE 5 🔄  Rust Service 2: Journal Scraper (skeleton + Crossref metadata)
 FASE 6 ⏳  Rust Service 3: Vector Cache
 FASE 7 ⏳  React Native Mobile App
 FASE 8 ⏳  Production Deployment
