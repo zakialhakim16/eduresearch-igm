@@ -6,12 +6,13 @@ EduResearch AI dirancang sebagai mentor riset digital: membantu mahasiswa mengek
 
 ## Status
 
-Proyek ini sedang aktif dikembangkan sebagai monorepo. Fokus implementasi saat ini berada pada aplikasi web, Supabase, dan dua service Rust pendukung:
+Proyek ini sedang aktif dikembangkan sebagai monorepo. Fokus implementasi saat ini berada pada aplikasi web, Supabase, service Rust pendukung, dan service Python Research Brain:
 
 - `apps/web`: aplikasi Next.js utama
 - `services/doc-parser`: service analisis dokumen
 - `services/journal-scraper`: service metadata DOI/Crossref
-- `supabase/migrations`: skema database dan RPC Supabase
+- `services/research-brain`: service Python untuk rekomendasi paper, scoring proposal, klasifikasi topik, indexing, dan analytics
+- `supabase/migrations`: skema database, RPC Supabase, dan tabel Research Brain
 
 Beberapa folder eksperimental/roadmap dapat muncul secara lokal, tetapi README ini hanya mendokumentasikan bagian yang sudah menjadi alur utama proyek.
 
@@ -25,7 +26,7 @@ Beberapa folder eksperimental/roadmap dapat muncul secara lokal, tetapi README i
 - Chat bimbingan Socratic dengan riwayat sesi
 - Reference engine berbasis OpenAlex
 - Penyimpanan referensi ke library dokumen
-- Proxy metadata jurnal melalui `journal-scraper`
+- Research Brain untuk rekomendasi paper, scoring proposal, klasifikasi topik, indexing, dan peta riset
 
 ## Filosofi Produk
 
@@ -68,6 +69,7 @@ AI boleh membantu mahasiswa menilai argumen, menemukan celah, menyusun pertanyaa
 | --- | --- | --- |
 | `doc-parser` | Rust | Parsing dan analisis dokumen |
 | `journal-scraper` | Rust | Metadata DOI via Crossref |
+| `research-brain` | Python/FastAPI | Rekomendasi paper, scoring proposal, klasifikasi topik, indexing, dan analytics riset |
 
 ## Struktur Repo
 
@@ -86,7 +88,8 @@ eduresearch-igm/
 │       └── package.json
 ├── services/
 │   ├── doc-parser/
-│   └── journal-scraper/
+│   ├── journal-scraper/
+│   └── research-brain/
 ├── supabase/
 │   └── migrations/
 ├── QA_CHECKLIST.md
@@ -99,7 +102,8 @@ eduresearch-igm/
 - Node.js 20+ direkomendasikan
 - npm 11 sesuai `packageManager`
 - Supabase project
-- Rust toolchain untuk menjalankan service lokal
+- Rust toolchain untuk menjalankan service Rust lokal
+- Python 3.11+ untuk menjalankan `research-brain` lokal
 - Ollama untuk AI lokal, atau `ANTHROPIC_API_KEY` untuk fallback AI
 
 ## Setup Lokal
@@ -134,6 +138,7 @@ OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b
 DOC_PARSER_URL=http://localhost:8001
 JOURNAL_SCRAPER_URL=http://localhost:8002
+RESEARCH_BRAIN_URL=http://localhost:8010
 ```
 
 Untuk production tanpa Ollama lokal, set:
@@ -149,6 +154,7 @@ Jalankan file SQL di folder `supabase/migrations` pada Supabase SQL Editor atau 
 ```text
 supabase/migrations/001_initial.sql
 supabase/migrations/002_start_document_session_rpc.sql
+supabase/migrations/003_research_brain.sql
 ```
 
 Pastikan bucket Storage bernama `documents` sudah dibuat di Supabase.
@@ -160,7 +166,7 @@ ollama pull qwen2.5:7b
 ollama serve
 ```
 
-### 6. Jalankan service Rust lokal
+### 6. Jalankan service lokal
 
 `doc-parser`:
 
@@ -174,6 +180,17 @@ PORT=8001 cargo run
 ```bash
 cd services/journal-scraper
 PORT=8002 cargo run
+```
+
+`research-brain`:
+
+```bash
+cd services/research-brain
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8010
 ```
 
 ### 7. Jalankan web app
@@ -237,6 +254,7 @@ npm run lint --workspace=web
    - `ANTHROPIC_API_KEY`
    - `DOC_PARSER_URL`
    - `JOURNAL_SCRAPER_URL`
+   - `RESEARCH_BRAIN_URL`
 4. Deploy.
 
 ### doc-parser di Railway
@@ -252,6 +270,14 @@ npm run lint --workspace=web
 2. Generate HTTPS domain.
 3. Pakai domain Railway sebagai `JOURNAL_SCRAPER_URL` di Vercel.
 4. Set `CROSSREF_MAILTO` di environment service untuk polite pool Crossref.
+
+### research-brain di Railway
+
+1. Deploy dari folder `services/research-brain`.
+2. Gunakan Dockerfile service tersebut.
+3. Generate HTTPS domain.
+4. Pakai domain Railway sebagai `RESEARCH_BRAIN_URL` di Vercel.
+5. Set environment service sesuai `services/research-brain/.env.example`.
 
 ## Roadmap
 

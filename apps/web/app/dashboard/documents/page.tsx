@@ -82,7 +82,47 @@ type DocumentItem = {
   created_at: string
 }
 
-type DocumentDetailTab = 'summary' | 'structure' | 'references' | 'gap'
+type BrainRubricScore = {
+  name: string
+  score: number
+  max_score: number
+  notes: string[]
+}
+
+type ProposalScore = {
+  id: string
+  document_id: string
+  total_score: number
+  max_score: number
+  verdict: string
+  rubric: BrainRubricScore[]
+  strengths: string[]
+  weaknesses: string[]
+  recommendations: string[]
+  updated_at: string
+}
+
+type TopicClassification = {
+  id: string
+  document_id: string
+  primary_topic: string
+  confidence: number
+  matched_keywords: string[]
+  alternative_topics: string[]
+  updated_at: string
+}
+
+type BrainIndexJob = {
+  id: string
+  document_id: string
+  job_id: string
+  status: string
+  message: string
+  progress: number
+  updated_at: string
+}
+
+type DocumentDetailTab = 'summary' | 'structure' | 'references' | 'gap' | 'brain'
 
 const DOCUMENT_TYPES = [
   { value: 'proposal', label: 'Proposal' },
@@ -121,6 +161,19 @@ export default function DocumentsPage() {
   const [analyzingReferenceGapId, setAnalyzingReferenceGapId] = useState<
     string | null
   >(null)
+  const [proposalScores, setProposalScores] = useState<
+    Record<string, ProposalScore>
+  >({})
+  const [topicClassifications, setTopicClassifications] = useState<
+    Record<string, TopicClassification>
+  >({})
+  const [brainIndexJobs, setBrainIndexJobs] = useState<
+    Record<string, BrainIndexJob>
+  >({})
+  const [scoringProposalId, setScoringProposalId] = useState<string | null>(null)
+  const [classifyingTopicId, setClassifyingTopicId] = useState<string | null>(null)
+  const [indexingBrainId, setIndexingBrainId] = useState<string | null>(null)
+  const [pollingBrainJobId, setPollingBrainJobId] = useState<string | null>(null)
   const [savingReferenceId, setSavingReferenceId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -160,6 +213,70 @@ export default function DocumentsPage() {
     [supabase]
   )
 
+
+  const fetchBrainData = useCallback(
+    async (documentIds: string[]) => {
+      if (documentIds.length === 0) {
+        setProposalScores({})
+        setTopicClassifications({})
+        setBrainIndexJobs({})
+        return
+      }
+
+      if (!supabase) return
+
+      const [scoreResult, classificationResult, jobResult] = await Promise.all([
+        supabase
+          .from('research_brain_proposal_scores')
+          .select('*')
+          .in('document_id', documentIds),
+        supabase
+          .from('research_brain_topic_classifications')
+          .select('*')
+          .in('document_id', documentIds),
+        supabase
+          .from('research_brain_index_jobs')
+          .select('*')
+          .in('document_id', documentIds),
+      ])
+
+      if (scoreResult.error) {
+        console.error('Gagal mengambil score proposal:', scoreResult.error.message)
+      } else {
+        setProposalScores(
+          Object.fromEntries(
+            (scoreResult.data ?? []).map((score) => [score.document_id, score])
+          )
+        )
+      }
+
+      if (classificationResult.error) {
+        console.error(
+          'Gagal mengambil klasifikasi topik:',
+          classificationResult.error.message
+        )
+      } else {
+        setTopicClassifications(
+          Object.fromEntries(
+            (classificationResult.data ?? []).map((classification) => [
+              classification.document_id,
+              classification,
+            ])
+          )
+        )
+      }
+
+      if (jobResult.error) {
+        console.error('Gagal mengambil job research brain:', jobResult.error.message)
+      } else {
+        setBrainIndexJobs(
+          Object.fromEntries((jobResult.data ?? []).map((job) => [job.document_id, job]))
+        )
+      }
+    },
+    [supabase]
+  )
+
   const fetchDocuments = useCallback(
     async (currentUserId: string) => {
       if (!supabase) return
@@ -181,8 +298,9 @@ export default function DocumentsPage() {
 
       const documentIds = (data ?? []).map((doc) => doc.id)
       await fetchSavedReferences(documentIds)
+      await fetchBrainData(documentIds)
     },
-    [supabase, fetchSavedReferences]
+    [supabase, fetchSavedReferences, fetchBrainData]
   )
 
   useEffect(() => {
@@ -234,6 +352,7 @@ export default function DocumentsPage() {
 
         const documentIds = (data ?? []).map((doc) => doc.id)
         await fetchSavedReferences(documentIds)
+        await fetchBrainData(documentIds)
       }
 
       setLoading(false)
@@ -244,7 +363,7 @@ export default function DocumentsPage() {
     return () => {
       isMounted = false
     }
-  }, [router, supabase, fetchSavedReferences])
+  }, [router, supabase, fetchSavedReferences, fetchBrainData])
 
   function handleFileChange(file: File | null) {
     setError('')
@@ -534,13 +653,14 @@ export default function DocumentsPage() {
 
     if (references.length === 0) {
       setError(
-
-        `OpenAlex belum menemukan referensi yang cocok. Query yang dicoba: ${
+        `Belum ada referensi yang cocok. Query yang dicoba: ${
           result.tried_queries?.join(', ') ?? '-'
         }`
       )
     } else {
-      setSuccess('Rekomendasi paper berhasil ditemukan.')
+      const sourceLabel =
+        result.source === 'research-brain' ? 'Research Brain' : 'OpenAlex fallback'
+      setSuccess(`Rekomendasi paper berhasil ditemukan via ${sourceLabel}.`)
     }
 
     setFindingReferencesId(null)
@@ -614,6 +734,123 @@ export default function DocumentsPage() {
     }
 
     setAnalyzingReferenceGapId(null)
+  }
+
+  async function handleScoreProposal(documentId: string) {
+    setScoringProposalId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/score-proposal', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(formatAiClientError(result.error ?? 'Gagal score proposal'))
+      setScoringProposalId(null)
+      return
+    }
+
+    setProposalScores((prev) => ({
+      ...prev,
+      [documentId]: result.score,
+    }))
+    setSuccess('Score proposal berhasil dibuat oleh Research Brain.')
+    setScoringProposalId(null)
+  }
+
+  async function handleClassifyTopic(documentId: string) {
+    setClassifyingTopicId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/classify-topic', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(formatAiClientError(result.error ?? 'Gagal klasifikasi topik'))
+      setClassifyingTopicId(null)
+      return
+    }
+
+    setTopicClassifications((prev) => ({
+      ...prev,
+      [documentId]: result.classification,
+    }))
+    setSuccess('Klasifikasi topik berhasil dibuat.')
+    setClassifyingTopicId(null)
+  }
+
+  async function handleIndexBrain(documentId: string) {
+    setIndexingBrainId(documentId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch('/api/documents/index-brain', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(formatAiClientError(result.error ?? 'Gagal indexing dokumen'))
+      setIndexingBrainId(null)
+      return
+    }
+
+    setBrainIndexJobs((prev) => ({
+      ...prev,
+      [documentId]: result.job,
+    }))
+    setSuccess('Job indexing Research Brain sudah dibuat.')
+    setIndexingBrainId(null)
+  }
+
+  async function handlePollBrainJob(documentId: string, jobId: string) {
+    setPollingBrainJobId(jobId)
+    setError('')
+    setSuccess('')
+
+    const response = await fetch(
+      `/api/documents/index-brain?job_id=${encodeURIComponent(jobId)}`
+    )
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(formatAiClientError(result.error ?? 'Gagal mengambil status job'))
+      setPollingBrainJobId(null)
+      return
+    }
+
+    setBrainIndexJobs((prev) => ({
+      ...prev,
+      [documentId]: result.job,
+    }))
+    setSuccess('Status indexing diperbarui.')
+    setPollingBrainJobId(null)
   }
 
   function formatFileSize(size: number | null) {
@@ -905,12 +1142,13 @@ export default function DocumentsPage() {
                   {expandedDocumentId === doc.id && (
                     <div className="space-y-4">
                       <div className="rounded-xl border bg-muted/20 p-2">
-                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
                           {[
                             { key: 'summary', label: 'Ringkasan' },
                             { key: 'structure', label: 'Struktur' },
                             { key: 'references', label: 'Referensi' },
                             { key: 'gap', label: 'Gap Analysis' },
+                            { key: 'brain', label: 'Brain' },
                           ].map((tab) => {
                             const isActive = getActiveDocumentTab(doc.id) === tab.key
 
@@ -933,7 +1171,7 @@ export default function DocumentsPage() {
                         </div>
                       </div>
 
-                      <div className="grid gap-2 md:grid-cols-4">
+                      <div className="grid gap-2 md:grid-cols-5">
                         {[
                           {
                             label: 'Dokumen dibaca',
@@ -950,6 +1188,10 @@ export default function DocumentsPage() {
                           {
                             label: 'Referensi tersimpan',
                             done: Boolean(savedReferences[doc.id]?.length),
+                          },
+                          {
+                            label: 'Brain indexed',
+                            done: brainIndexJobs[doc.id]?.status === 'completed',
                           },
                         ].map((item) => (
                           <div
@@ -1438,6 +1680,196 @@ export default function DocumentsPage() {
                               )
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {getActiveDocumentTab(doc.id) === 'brain' && (
+                        <div className="space-y-4">
+                          <div className="space-y-3 rounded-xl border bg-background p-4">
+                            <div>
+                              <p className="text-sm font-medium">Research Brain</p>
+                              <p className="text-xs text-muted-foreground">
+                                Score proposal, klasifikasi topik, dan indexing untuk retrieval riset.
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => handleScoreProposal(doc.id)}
+                                disabled={
+                                  scoringProposalId === doc.id ||
+                                  doc.status !== 'parsed' ||
+                                  !doc.ai_summary
+                                }
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                              >
+                                {scoringProposalId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Scoring proposal" />
+                                    Scoring...
+                                  </>
+                                ) : (
+                                  'Score Proposal'
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => handleClassifyTopic(doc.id)}
+                                disabled={classifyingTopicId === doc.id || doc.status !== 'parsed'}
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                              >
+                                {classifyingTopicId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Klasifikasi topik" />
+                                    Klasifikasi...
+                                  </>
+                                ) : (
+                                  'Klasifikasi Topik'
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => handleIndexBrain(doc.id)}
+                                disabled={indexingBrainId === doc.id || doc.status !== 'parsed'}
+                                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                              >
+                                {indexingBrainId === doc.id ? (
+                                  <>
+                                    <Spinner aria-label="Indexing brain" />
+                                    Indexing...
+                                  </>
+                                ) : (
+                                  'Index ke Brain'
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {proposalScores[doc.id] ? (
+                            <div className="space-y-3 rounded-xl border bg-background p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium">Score Proposal</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {proposalScores[doc.id].verdict}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                                  {proposalScores[doc.id].total_score}/
+                                  {proposalScores[doc.id].max_score}
+                                </span>
+                              </div>
+
+                              <div className="grid gap-2 md:grid-cols-2">
+                                {proposalScores[doc.id].rubric.map((item) => (
+                                  <div key={item.name} className="rounded-lg border p-3 text-sm">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="font-medium">{item.name}</p>
+                                      <span className="text-xs text-muted-foreground">
+                                        {item.score}/{item.max_score}
+                                      </span>
+                                    </div>
+                                    {item.notes.length > 0 && (
+                                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                                        {item.notes.join(' ')}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+
+                              {proposalScores[doc.id].recommendations.length > 0 && (
+                                <div className="rounded-lg bg-muted/40 p-3">
+                                  <p className="text-xs font-medium">Rekomendasi:</p>
+                                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                                    {proposalScores[doc.id].recommendations.slice(0, 5).map((item) => (
+                                      <li key={item}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+                              Belum ada score proposal. Klik Score Proposal untuk membuat evaluasi awal.
+                            </div>
+                          )}
+
+                          {topicClassifications[doc.id] && (
+                            <div className="space-y-3 rounded-xl border bg-background p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium">Klasifikasi Topik</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {topicClassifications[doc.id].primary_topic}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                                  Confidence {Math.round(topicClassifications[doc.id].confidence * 100)}%
+                                </span>
+                              </div>
+
+                              {topicClassifications[doc.id].matched_keywords.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {topicClassifications[doc.id].matched_keywords.map((keyword) => (
+                                    <span
+                                      key={keyword}
+                                      className="rounded-full border bg-muted/40 px-2 py-1 text-xs"
+                                    >
+                                      {keyword}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {topicClassifications[doc.id].alternative_topics.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  Alternatif: {topicClassifications[doc.id].alternative_topics.join(', ')}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {brainIndexJobs[doc.id] && (
+                            <div className="space-y-3 rounded-xl border bg-background p-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-medium">Indexing Job</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {brainIndexJobs[doc.id].message}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    handlePollBrainJob(doc.id, brainIndexJobs[doc.id].job_id)
+                                  }
+                                  disabled={pollingBrainJobId === brainIndexJobs[doc.id].job_id}
+                                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+                                >
+                                  {pollingBrainJobId === brainIndexJobs[doc.id].job_id ? (
+                                    <>
+                                      <Spinner aria-label="Refresh job" />
+                                      Refresh...
+                                    </>
+                                  ) : (
+                                    'Refresh Status'
+                                  )}
+                                </button>
+                              </div>
+
+                              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full bg-primary"
+                                  style={{
+                                    width: `${Math.min(brainIndexJobs[doc.id].progress, 100)}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {brainIndexJobs[doc.id].status} · {brainIndexJobs[doc.id].progress}%
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

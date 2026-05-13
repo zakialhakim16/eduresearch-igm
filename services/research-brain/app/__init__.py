@@ -1,0 +1,1 @@
+"""Research Brain application package."""

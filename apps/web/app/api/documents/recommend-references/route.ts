@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
+import {
+  callResearchBrain,
+  isResearchBrainUnavailable,
+  type RecommendPapersResponse,
+  type ResearchBrainPaper,
+} from '@/lib/research-brain'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 type RecommendRequest = {
   document_id: string
+}
+
+type DocumentStructure = {
+  detected_type?: string
+  keywords?: string[]
 }
 
 type OpenAlexWork = {
@@ -97,7 +108,7 @@ function mapOpenAlexWorks(works: OpenAlexWork[]) {
     const authors =
       work.authorships
         ?.map((item) => item.author?.display_name)
-        .filter(Boolean)
+        .filter((author): author is string => Boolean(author))
         .slice(0, 5) ?? []
 
     return {
@@ -116,6 +127,93 @@ function mapOpenAlexWorks(works: OpenAlexWork[]) {
       is_open_access: work.open_access?.is_oa ?? false,
     }
   })
+}
+
+function mapResearchBrainPaper(paper: ResearchBrainPaper) {
+  return {
+    openalex_id: paper.source_id ?? paper.doi ?? paper.title,
+    title: paper.title,
+    year: paper.year,
+    doi: paper.doi,
+    authors: paper.authors,
+    journal: paper.journal,
+    cited_by_count: paper.cited_by_count,
+    url: paper.url ?? paper.doi,
+    abstract: paper.abstract ?? '',
+    is_open_access: paper.open_access,
+  }
+}
+
+function extractMethods(keywords: string[] | null, structure?: DocumentStructure | null) {
+  const haystack = [...(keywords ?? []), ...(structure?.keywords ?? [])]
+  return haystack
+    .filter((item) =>
+      /method|metode|model|algorithm|classification|regression|svm|cnn|lstm|naive|bayes|k-fold|dataset/i.test(item)
+    )
+    .slice(0, 6)
+}
+
+async function fallbackOpenAlex(document: {
+  id: string
+  research_query: string | null
+  research_keywords: string[] | null
+}) {
+  const searchQueries = buildSearchQueries(
+    document.research_query,
+    document.research_keywords
+  )
+
+  if (searchQueries.length === 0) {
+    return {
+      query: null,
+      tried_queries: [],
+      references: [],
+    }
+  }
+
+  let allReferences: ReturnType<typeof mapOpenAlexWorks> = []
+  const triedQueries: string[] = []
+
+  for (const query of searchQueries) {
+    triedQueries.push(query)
+
+    const works = await searchOpenAlex(query)
+    const mapped = mapOpenAlexWorks(works)
+
+    allReferences = [...allReferences, ...mapped]
+
+    if (allReferences.length >= 25) {
+      break
+    }
+  }
+
+  const uniqueReferences = Array.from(
+    new Map(
+      allReferences.map((reference) => [reference.openalex_id, reference])
+    ).values()
+  )
+
+  const references = uniqueReferences
+    .sort((a, b) => {
+      const aScore =
+        (a.abstract ? 20 : 0) +
+        (a.year ? Math.max(0, a.year - 2018) : 0) +
+        Math.min(a.cited_by_count ?? 0, 100)
+
+      const bScore =
+        (b.abstract ? 20 : 0) +
+        (b.year ? Math.max(0, b.year - 2018) : 0) +
+        Math.min(b.cited_by_count ?? 0, 100)
+
+      return bScore - aScore
+    })
+    .slice(0, 15)
+
+  return {
+    query: triedQueries[0],
+    tried_queries: triedQueries,
+    references,
+  }
 }
 
 export async function POST(request: Request) {
@@ -142,7 +240,9 @@ export async function POST(request: Request) {
 
     const { data: document, error: documentError } = await supabase
       .from('documents')
-      .select('id, user_id, nama_file, research_keywords, research_query')
+      .select(
+        'id, user_id, nama_file, jenis, ai_summary, extracted_text, research_keywords, research_query, structure'
+      )
       .eq('id', body.document_id)
       .eq('user_id', user.id)
       .single()
@@ -161,74 +261,49 @@ export async function POST(request: Request) {
       )
     }
 
-    const searchQueries = buildSearchQueries(
-      document.research_query,
-      document.research_keywords
-    )
+    const structure = document.structure as DocumentStructure | null
 
-    if (searchQueries.length === 0) {
-      return NextResponse.json(
+    try {
+      const result = await callResearchBrain<RecommendPapersResponse>(
+        '/recommend/papers',
         {
-          error:
-            'Dokumen belum memiliki research_query. Jalankan ekstrak keyword dulu.',
-        },
-        { status: 400 }
+          method: 'POST',
+          body: JSON.stringify({
+            title: document.research_query || document.nama_file,
+            abstract:
+              document.ai_summary ?? document.extracted_text?.slice(0, 2000) ?? null,
+            keywords: document.research_keywords ?? [],
+            methods: extractMethods(document.research_keywords, structure),
+            document_type: structure?.detected_type ?? document.jenis,
+            institution_context: 'Universitas Indo Global Mandiri Palembang',
+            limit: 15,
+            per_query_limit: 12,
+            max_candidates: 40,
+          }),
+          timeoutMs: 20000,
+        }
       )
-    }
 
-    let allReferences: ReturnType<typeof mapOpenAlexWorks> = []
-    const triedQueries: string[] = []
-
-    for (const query of searchQueries) {
-      triedQueries.push(query)
-
-      const works = await searchOpenAlex(query)
-      const mapped = mapOpenAlexWorks(works)
-
-      allReferences = [...allReferences, ...mapped]
-
-      // Kalau sudah cukup banyak, stop agar tidak terlalu banyak request
-      if (allReferences.length >= 25) {
-        break
-      }
-    }
-
-    // Hapus duplikat berdasarkan OpenAlex ID
-    const uniqueReferences = Array.from(
-      new Map(
-        allReferences.map((reference) => [
-          reference.openalex_id,
-          reference,
-        ])
-      ).values()
-    )
-
-    // Ranking sederhana:
-    // 1. Ada abstract lebih bagus
-    // 2. Tahun terbaru lebih bagus
-    // 3. Sitasi lebih tinggi lebih bagus
-    const references = uniqueReferences
-      .sort((a, b) => {
-        const aScore =
-          (a.abstract ? 20 : 0) +
-          (a.year ? Math.max(0, a.year - 2018) : 0) +
-          Math.min(a.cited_by_count ?? 0, 100)
-
-        const bScore =
-          (b.abstract ? 20 : 0) +
-          (b.year ? Math.max(0, b.year - 2018) : 0) +
-          Math.min(b.cited_by_count ?? 0, 100)
-
-        return bScore - aScore
+      return NextResponse.json({
+        success: true,
+        source: 'research-brain',
+        document_id: document.id,
+        query: result.tried_queries[0] ?? document.research_query,
+        tried_queries: result.tried_queries,
+        references: result.results.map(mapResearchBrainPaper),
       })
-      .slice(0, 15)
+    } catch (error) {
+      if (!isResearchBrainUnavailable(error)) throw error
+      console.warn('Research Brain unavailable, falling back to OpenAlex:', error.message)
+    }
+
+    const fallback = await fallbackOpenAlex(document)
 
     return NextResponse.json({
       success: true,
+      source: 'openalex-fallback',
       document_id: document.id,
-      query: triedQueries[0],
-      tried_queries: triedQueries,
-      references,
+      ...fallback,
     })
   } catch (error) {
     console.error(error)

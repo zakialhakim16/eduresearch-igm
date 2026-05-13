@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FolderOpen, PenLine, Search } from 'lucide-react'
+import { ResearchMapPanel } from '@/components/research-map-panel'
 import { createServerSupabaseClient } from '@/lib/supabase.server'
 
 function formatDate(date: string) {
@@ -120,6 +121,8 @@ export default async function DashboardPage() {
             </div>
           </Link>
         </section>
+
+        <ResearchMapPanel />
 
         <section className="grid gap-6 md:grid-cols-2">
           <div className="dash-panel space-y-5">

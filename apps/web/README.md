@@ -1,6 +1,6 @@
 # EduResearch AI Web App
 
-Aplikasi web utama untuk platform EduResearch AI. Folder ini berisi antarmuka pengguna, route API Next.js, integrasi Supabase, dan orkestrasi layanan pendukung seperti `doc-parser`, `journal-scraper`, OpenAlex, Ollama, dan provider AI fallback.
+Aplikasi web utama untuk platform EduResearch AI. Folder ini berisi antarmuka pengguna, route API Next.js, integrasi Supabase, dan orkestrasi layanan pendukung seperti `doc-parser`, `journal-scraper`, `research-brain`, OpenAlex, Ollama, dan provider AI fallback.
 
 ## Gambaran Singkat
 
@@ -13,6 +13,7 @@ Web app ini menangani alur utama pengguna:
 - sesi bimbingan berbasis AI
 - integrasi metadata jurnal
 - parsing dan analisis dokumen
+- rekomendasi paper, scoring proposal, klasifikasi topik, indexing, dan analytics via Research Brain
 
 ## Stack
 
@@ -91,6 +92,7 @@ OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b
 DOC_PARSER_URL=http://localhost:8001
 JOURNAL_SCRAPER_URL=http://localhost:8002
+RESEARCH_BRAIN_URL=http://localhost:8010
 ```
 
 Opsional untuk production/serverless:
@@ -104,6 +106,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 - Supabase untuk auth, database, dan storage
 - `doc-parser` untuk analisis dokumen
 - `journal-scraper` untuk metadata DOI
+- `research-brain` untuk rekomendasi paper, scoring proposal, klasifikasi topik, indexing, dan analytics riset
 - Ollama untuk model AI lokal
 - Anthropic API sebagai fallback AI production
 - OpenAlex untuk pencarian paper
@@ -127,7 +130,7 @@ Untuk deploy ke Vercel:
 1. Set Root Directory ke `apps/web`.
 2. Isi seluruh environment variables production.
 3. Pastikan migrasi Supabase sudah dijalankan.
-4. Pastikan `DOC_PARSER_URL` dan `JOURNAL_SCRAPER_URL` memakai URL HTTPS jika dipakai di production.
+4. Pastikan `DOC_PARSER_URL`, `JOURNAL_SCRAPER_URL`, dan `RESEARCH_BRAIN_URL` memakai URL HTTPS jika dipakai di production.
 
 ## Catatan
 
@@ -136,3 +139,5 @@ Untuk deploy ke Vercel:
 - Script `dev` memakai port `3001`.
 - Route `/api/documents/analyze` memerlukan `DOC_PARSER_URL`.
 - Route `/api/journals/metadata` memerlukan `JOURNAL_SCRAPER_URL`.
+- Route Brain seperti `/api/documents/score-proposal`, `/api/documents/classify-topic`, `/api/documents/index-brain`, dan `/api/analytics/research-map` memerlukan `RESEARCH_BRAIN_URL`.
+- Route `/api/documents/recommend-references` memakai `RESEARCH_BRAIN_URL` jika tersedia dan fallback ke OpenAlex jika service belum aktif.
