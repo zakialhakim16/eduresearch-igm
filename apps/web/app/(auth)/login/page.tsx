@@ -1,9 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { isSupabasePublicEnvConfigured } from '@/lib/supabase-public-env'
+import { useSupabaseBrowserClient } from '@/lib/use-supabase-browser'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
+function loginErrorMessage(error: { message?: string; name?: string } | null) {
+  if (!error) return 'Email atau password salah'
+  const msg = (error.message ?? '').toLowerCase()
+  if (
+    msg.includes('fetch') ||
+    msg.includes('network') ||
+    msg.includes('failed to fetch') ||
+    error.name === 'AuthRetryableFetchError'
+  ) {
+    return 'Tidak dapat menghubungi server autentikasi. Periksa koneksi internet atau pastikan variabel lingkungan Supabase (NEXT_PUBLIC_SUPABASE_URL) sudah benar di deployment.'
+  }
+  return 'Email atau password salah'
+}
 
 export default function LoginPage() {
   const [npm, setNpm] = useState('')
@@ -17,11 +32,26 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useSupabaseBrowserClient()
+  const envOk = isSupabasePublicEnvConfigured()
 
   async function handleLogin() {
     setLoading(true)
     setError('')
+
+    if (!envOk) {
+      setError(
+        'Aplikasi belum dikonfigurasi: atur NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY (nilai ini harus ada saat build di Vercel).'
+      )
+      setLoading(false)
+      return
+    }
+
+    if (!supabase) {
+      setError('Menghubungkan ke server… coba lagi dalam sebentar.')
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -29,7 +59,7 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError('Email atau password salah')
+      setError(loginErrorMessage(error))
       setLoading(false)
       return
     }
@@ -61,6 +91,14 @@ export default function LoginPage() {
             </div>
 
             <div className="w-full max-w-md space-y-4 rounded-3xl border border-border/70 bg-card/90 p-6 shadow-xl shadow-black/[0.06] ring-1 ring-black/[0.04] backdrop-blur-md dark:border-white/10 dark:bg-card/80 dark:shadow-black/40 dark:ring-white/[0.06]">
+              {!envOk && (
+                <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  Supabase belum dikonfigurasi. Tambahkan{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_URL</code> dan{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> di
+                  Vercel (Environment Variables), lalu deploy ulang agar nilai ikut ke bundle browser.
+                </p>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-medium">NPM</label>
                 <div className="flex items-center overflow-hidden rounded-lg border border-input bg-muted focus-within:ring-2 focus-within:ring-primary">
@@ -92,7 +130,7 @@ export default function LoginPage() {
 
               <button
                 onClick={handleLogin}
-                disabled={loading}
+                disabled={loading || !envOk || (envOk && !supabase)}
                 className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? 'Masuk...' : 'Masuk'}

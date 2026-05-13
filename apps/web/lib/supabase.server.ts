@@ -1,10 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { getSupabasePublicCredentials } from '@/lib/supabase-public-env'
+import { getSupabasePublicCredentialsOrPlaceholder } from '@/lib/supabase-public-env'
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
-  const { url, anonKey } = getSupabasePublicCredentials()
+  const { url, anonKey } = getSupabasePublicCredentialsOrPlaceholder()
 
   return createServerClient(url, anonKey,
     {

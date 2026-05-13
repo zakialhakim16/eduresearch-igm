@@ -1,11 +1,12 @@
 'use client'
 
 import { CheckCircle2, Circle, FolderOpen } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Spinner } from '@/components/ui/spinner'
 import { formatAiClientError } from '@/lib/format-ai-client-error'
-import { createClient } from '@/lib/supabase'
+import { isSupabasePublicEnvConfigured } from '@/lib/supabase-public-env'
+import { useSupabaseBrowserClient } from '@/lib/use-supabase-browser'
 
 type RecommendedReference = {
   openalex_id: string
@@ -94,7 +95,7 @@ const DOCUMENT_TYPES = [
 
 export default function DocumentsPage() {
   const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useSupabaseBrowserClient()
 
   const [userId, setUserId] = useState<string | null>(null)
   const [documents, setDocuments] = useState<DocumentItem[]>([])
@@ -131,6 +132,8 @@ export default function DocumentsPage() {
         return
       }
 
+      if (!supabase) return
+
       const { data, error } = await supabase
         .from('paper_references')
         .select('*')
@@ -159,6 +162,8 @@ export default function DocumentsPage() {
 
   const fetchDocuments = useCallback(
     async (currentUserId: string) => {
+      if (!supabase) return
+
       const { data, error } = await supabase
         .from('documents')
         .select(
@@ -181,13 +186,27 @@ export default function DocumentsPage() {
   )
 
   useEffect(() => {
+    if (!supabase) {
+      if (!isSupabasePublicEnvConfigured()) {
+        queueMicrotask(() => {
+          setLoading(false)
+          setError(
+            'Supabase tidak dikonfigurasi. Set NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY di deployment lalu build ulang.'
+          )
+        })
+      }
+      return
+    }
+
+    const client = supabase
+
     let isMounted = true
 
     async function loadInitialData() {
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser()
+      } = await client.auth.getUser()
 
       if (!isMounted) return
 
@@ -198,7 +217,7 @@ export default function DocumentsPage() {
 
       setUserId(user.id)
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('documents')
         .select(
           'id, nama_file, jenis, status, storage_path, file_size, mime_type, structure, ai_summary, research_keywords, research_query, reference_gap_analysis, reference_gap_updated_at, created_at'
@@ -268,6 +287,11 @@ export default function DocumentsPage() {
   async function handleUpload() {
     if (!userId) {
       setError('User tidak ditemukan')
+      return
+    }
+
+    if (!supabase) {
+      setError('Koneksi ke database belum siap. Muat ulang halaman.')
       return
     }
 

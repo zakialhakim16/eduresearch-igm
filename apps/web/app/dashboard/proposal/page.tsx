@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Spinner } from '@/components/ui/spinner'
 import { formatAiClientError } from '@/lib/format-ai-client-error'
-import { createClient } from '@/lib/supabase'
+import { isSupabasePublicEnvConfigured } from '@/lib/supabase-public-env'
+import { useSupabaseBrowserClient } from '@/lib/use-supabase-browser'
 
 type ChatMessage = {
   role: 'user' | 'assistant'
@@ -99,7 +100,7 @@ export default function ProposalPage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
     sessionIdFromUrl
   )
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useSupabaseBrowserClient()
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -121,6 +122,16 @@ export default function ProposalPage() {
         setMessages(getDefaultMessages())
         setInput('')
         setLoadingSession(false)
+        return
+      }
+
+      if (!supabase) {
+        if (!isSupabasePublicEnvConfigured()) {
+          setError(
+            'Supabase tidak dikonfigurasi. Set NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY di deployment lalu build ulang.'
+          )
+          setLoadingSession(false)
+        }
         return
       }
 

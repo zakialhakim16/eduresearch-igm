@@ -1,10 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getSupabasePublicCredentials } from '@/lib/supabase-public-env'
+import { getSupabasePublicCredentialsOrPlaceholder } from '@/lib/supabase-public-env'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
-  const { url, anonKey } = getSupabasePublicCredentials()
+  const { url, anonKey } = getSupabasePublicCredentialsOrPlaceholder()
 
   const supabase = createServerClient(url, anonKey,
     {

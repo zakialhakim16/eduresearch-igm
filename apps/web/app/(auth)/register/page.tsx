@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { isSupabasePublicEnvConfigured } from '@/lib/supabase-public-env'
+import { useSupabaseBrowserClient } from '@/lib/use-supabase-browser'
 import { useRouter } from 'next/navigation'
 
 const FAKULTAS_PRODI = {
@@ -37,7 +38,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useSupabaseBrowserClient()
+  const envOk = isSupabasePublicEnvConfigured()
 
  const [form, setForm] = useState({
   nama: '',
@@ -67,6 +69,20 @@ export default function RegisterPage() {
   async function handleRegister() {
     setLoading(true)
     setError('')
+
+    if (!envOk) {
+      setError(
+        'Aplikasi belum dikonfigurasi: atur NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY di Vercel, lalu deploy ulang.'
+      )
+      setLoading(false)
+      return
+    }
+
+    if (!supabase) {
+      setError('Menghubungkan ke server… coba lagi dalam sebentar.')
+      setLoading(false)
+      return
+    }
 
     // Validasi email UIGM
     if (!form.email.endsWith('@uigm.ac.id') && !form.email.endsWith('@student.uigm.ac.id')) {
@@ -116,6 +132,14 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md p-8 space-y-6 border rounded-xl shadow-sm">
+        {!envOk && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Supabase belum dikonfigurasi. Tambahkan{' '}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_URL</code> dan{' '}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> di
+            Vercel, lalu deploy ulang.
+          </p>
+        )}
 
         {/* Header */}
         <div className="space-y-2 text-center">
@@ -258,7 +282,14 @@ export default function RegisterPage() {
               </button>
               <button
                 onClick={handleRegister}
-                disabled={loading || !form.jenjang || !form.fakultas || !form.prodi}
+                disabled={
+                loading ||
+                !form.jenjang ||
+                !form.fakultas ||
+                !form.prodi ||
+                !envOk ||
+                (envOk && !supabase)
+              }
                 className="flex-1 py-2 px-4 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? 'Mendaftar...' : 'Daftar'}
